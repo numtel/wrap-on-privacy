@@ -84,12 +84,8 @@ describe("privacy-token", () => {
       nonReceivingTreeRoot: 0n,
     }, {
       treeRoot: tree.root,
-      decryptedBalance: balance,
-      decryptedAmountReceived: F.pow(BASE, sendAmount2),
-      newBalanceRaw: balance + sendAmount2,
       encryptedAmountSent,
       sendEphemeralKey,
-      finalBalanceRaw: balance + sendAmount2 - sendAmount,
       finalBalance,
       receiveNullifier,
     });
@@ -309,12 +305,8 @@ describe("privacy-token", () => {
       nonReceivingTreeRoot,
     }, {
       treeRoot: nonReceivingTreeRoot,
-      decryptedBalance: balance,
-      decryptedAmountReceived: F.pow(BASE, sendAmount2),
-      newBalanceRaw: balance,
       encryptedAmountSent,
       sendEphemeralKey,
-      finalBalanceRaw: balance - sendAmount,
       finalBalance,
       receiveNullifier,
     });

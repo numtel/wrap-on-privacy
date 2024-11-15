@@ -27,18 +27,14 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   signal input nonReceivingTreeRoot;
 
   signal output treeRoot;
-  signal output decryptedBalance;
-  signal output decryptedAmountReceived;
-  signal output newBalanceRaw;
   signal output encryptedAmountSent;
   signal output sendEphemeralKey;
-  signal output finalBalanceRaw;
   signal output finalBalance;
   signal output receiveNullifier;
 
   var pubKey = Exponentiate()(2, privateKey);
 
-  decryptedBalance <== SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce);
+  var decryptedBalance = SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce);
 
   var receiveTxHash = Poseidon(2)([encryptedAmountReceived, ephemeralKeyReceived]);
 
@@ -46,12 +42,12 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash, treeDepth, treeIndices, treeSiblings);
   treeRoot <== IfElse()(notReceiving, nonReceivingTreeRoot, calcTreeRoot);
 
-  decryptedAmountReceived <== AsymmetricDecrypt()(privateKey, ephemeralKeyReceived, encryptedAmountReceived);
+  var decryptedAmountReceived = AsymmetricDecrypt()(privateKey, ephemeralKeyReceived, encryptedAmountReceived);
   var checkDecryptedAmountReceived = Exponentiate()(2, decodedAmountReceived);
   decryptedAmountReceived === checkDecryptedAmountReceived;
 
   var newBalanceIfReceiving = decryptedBalance + decodedAmountReceived;
-  newBalanceRaw <== IfElse()(notReceiving, decryptedBalance, newBalanceIfReceiving);
+  var newBalanceRaw = IfElse()(notReceiving, decryptedBalance, newBalanceIfReceiving);
 
   var sendAmountValid = LessThan(MAX_AMOUNT_BITS)([ newBalanceRaw, sendAmount ]);
   sendAmountValid === 0;
@@ -63,7 +59,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   sendEncrypter.ephemeralKey ==> sendEphemeralKey;
   sendEncrypter.encryptedMessage ==> encryptedAmountSent;
 
-  finalBalanceRaw <== newBalanceRaw - sendAmount;
+  var finalBalanceRaw = newBalanceRaw - sendAmount;
   finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);
 
   receiveNullifier <== Poseidon(2)([ receiveTxHash, privateKey ]);
