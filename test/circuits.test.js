@@ -13,13 +13,27 @@ const circomkit = new Circomkit({
   "include": ["node_modules/circomlib/circuits", "node_modules/@zk-kit/circuits/circom"],
 });
 
-describe("merkle-tree", () => {
-  it("verifies", async () => {
-    const MAX_DEPTH = 20;
+describe("privacy-token", () => {
+  it("verifies a send/receive (both)", async () => {
+    const MAX_DEPTH = 10;
+    const MAX_AMOUNT_BITS = 19;
+    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const publicKey = F.pow(BASE, privateKey);
     const encAmount1 = 123n;
     const ephemKey1 = 234n;
-    const encAmount2 = 223n;
-    const ephemKey2 = 334n;
+    const sendAmount2Nonce = 456n;
+    const sendAmount2 = 223n;
+    const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
+    const balance = 987n;
+    const balanceNonce = 1234n;
+    const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
+    const sendAmount = balance + sendAmount2 - 1n;
+    const sendNonce = 2345n;
+    const recipPrivateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const recipPubKey = F.pow(BASE, recipPrivateKey);
+    const {encryptedMessage: encryptedAmountSent, ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
+    const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
+    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
 
     const tree = new LeanIMT((a, b) => poseidon2([a, b]));
 
@@ -47,28 +61,37 @@ describe("merkle-tree", () => {
       file: "privacy-token",
       template: "PrivacyToken",
       dir: "test/privacy-token",
-      params: [MAX_DEPTH],
+      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
     });
 
     await circuit.expectPass({
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
+      decodedAmountReceived: sendAmount2,
       treeDepth: tree.depth,
       treeIndices,
       treeSiblings,
+      privateKey,
+      encryptedBalance,
+      balanceNonce,
+      sendAmount,
+      sendNonce,
+      recipPubKey,
     }, {
       treeRoot: tree.root,
+      decryptedBalance: balance,
+      decryptedAmountReceived: F.pow(BASE, sendAmount2),
+      newBalanceRaw: balance + sendAmount2,
+      encryptedAmountSent,
+      sendEphemeralKey,
+      finalBalanceRaw: balance + sendAmount2 - sendAmount,
+      receiveNullifier,
     });
   });
 });
 
 describe("encryption-asymmetric", () => {
   it("encrypt-decrypt", async () => {
-    const circuitEncrypt = await circomkit.WitnessTester(`asymmetricencrypt`, {
-      file: "encryption-asymmetric",
-      template: "AsymmetricEncrypt",
-      dir: "test/encryption-asymmetric",
-    });
     const circuitDecrypt = await circomkit.WitnessTester(`asymmetricdecrypt`, {
       file: "encryption-asymmetric",
       template: "AsymmetricDecrypt",
@@ -81,10 +104,7 @@ describe("encryption-asymmetric", () => {
     const nonce = 34567n;
 
     // Can encrypt and decrypt back to the same value
-    const {encryptedMessage, ephemeralKey} = await circuitEncrypt.compute(
-      {secret, publicKey, nonce},
-      ['encryptedMessage', 'ephemeralKey']
-    );
+    const {encryptedMessage, ephemeralKey} = await asymmetricEncrypt(secret, publicKey, nonce);
     await circuitDecrypt.expectPass(
       { encryptedMessage, ephemeralKey, privateKey },
       // decrypted value is encoded
@@ -93,13 +113,30 @@ describe("encryption-asymmetric", () => {
   });
 });
 
+async function asymmetricEncrypt(secret, publicKey, nonce) {
+  const circuitEncrypt = await circomkit.WitnessTester(`asymmetricencrypt`, {
+    file: "encryption-asymmetric",
+    template: "AsymmetricEncrypt",
+    dir: "test/encryption-asymmetric",
+  });
+  return await circuitEncrypt.compute(
+    {secret, publicKey, nonce},
+    ['encryptedMessage', 'ephemeralKey']
+  );
+}
+
+async function symmetricEncrypt(message, key, nonce) {
+  const circuitEncrypt = await circomkit.WitnessTester(`symmetricencrypt`, {
+    file: "encryption-symmetric",
+    template: "SymmetricEncrypt",
+    dir: "test/encryption-symmetric",
+  });
+  const {encryptedMessage} = await circuitEncrypt.compute({message, key, nonce}, ['encryptedMessage']);
+  return encryptedMessage;
+}
+
 describe("encryption-symmetric", () => {
   it("encrypt-decrypt", async () => {
-    const circuitEncrypt = await circomkit.WitnessTester(`symmetricencrypt`, {
-      file: "encryption-symmetric",
-      template: "SymmetricEncrypt",
-      dir: "test/encryption-symmetric",
-    });
     const circuitDecrypt = await circomkit.WitnessTester(`symmetricdecrypt`, {
       file: "encryption-symmetric",
       template: "SymmetricDecrypt",
@@ -111,7 +148,7 @@ describe("encryption-symmetric", () => {
     const nonce = 34567n;
 
     // Can encrypt and decrypt back to the same value
-    const {encryptedMessage} = await circuitEncrypt.compute({message, key, nonce}, ['encryptedMessage']);
+    const encryptedMessage = await symmetricEncrypt(message, key, nonce);
     await circuitDecrypt.expectPass({ encryptedMessage, key, nonce }, { message });
   });
 });
