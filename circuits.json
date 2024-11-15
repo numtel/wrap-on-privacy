@@ -3,6 +3,6 @@
     "file": "circuits/privacy-token",
     "template": "PrivacyToken",
     "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce"],
-    "params": [32, 252]
+    "params": [32, 252, 524288]
   }
 }

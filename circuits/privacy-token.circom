@@ -11,7 +11,7 @@ include "exponentiate.circom";
 include "encryption-symmetric.circom";
 include "encryption-asymmetric.circom";
 
-template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
+template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   signal input privateKey;
   signal input encryptedBalance;
   signal input balanceNonce;
@@ -55,6 +55,11 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   validSendAmount.in[0] <== newBalanceRaw;
   validSendAmount.in[1] <== sendAmount;
   validSendAmount.out === 0;
+
+  component underMaxSendAmount = LessThan(MAX_AMOUNT_BITS);
+  underMaxSendAmount.in[0] <== MAX_SEND_AMOUNT;
+  underMaxSendAmount.in[1] <== sendAmount;
+  underMaxSendAmount.out === 0;
 
   component sendEncrypter = AsymmetricEncrypt();
   sendEncrypter.secret <== sendAmount;

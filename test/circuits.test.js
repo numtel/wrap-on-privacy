@@ -15,6 +15,7 @@ const circomkit = new Circomkit({
 
 const MAX_DEPTH = 32n;
 const MAX_AMOUNT_BITS = 252n;
+const MAX_SEND_AMOUNT = 2n ** 19n;
 
 describe("privacy-token", () => {
   it("verifies a send/receive (both)", async () => {
@@ -133,6 +134,55 @@ describe("privacy-token", () => {
     const newBalanceNonce = 1235n;
     const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
     const sendAmount = balance + sendAmount2 + 1n;
+    const sendNonce = 2345n;
+    const recipPrivateKey = 0x20644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const recipPubKey = F.pow(BASE, recipPrivateKey);
+    const {encryptedMessage: encryptedAmountSent, ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
+    const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
+    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+    const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
+
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
+
+    const circuit = await privacyToken();
+    await circuit.expectFail({
+      encryptedAmountReceived: encAmount2,
+      ephemeralKeyReceived: ephemKey2,
+      decodedAmountReceived: sendAmount2,
+      treeDepth,
+      treeIndices,
+      treeSiblings,
+      privateKey,
+      encryptedBalance,
+      balanceNonce,
+      newBalanceNonce,
+      sendAmount,
+      sendNonce,
+      recipPubKey,
+      isBurn: 0,
+      // This value will not be output in this test case because it is receiving
+      nonReceivingTreeRoot: 0n,
+    });
+  });
+
+  it("fails when send amount is over max send", async () => {
+    const MAX_DEPTH = 10;
+    const MAX_AMOUNT_BITS = 19;
+    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const publicKey = F.pow(BASE, privateKey);
+    const encAmount1 = 123n;
+    const ephemKey1 = 234n;
+    const sendAmount2Nonce = 456n;
+    const sendAmount2 = 223n;
+    const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
+    const balance = MAX_SEND_AMOUNT + 100n;
+    const balanceNonce = 1234n;
+    const newBalanceNonce = 1235n;
+    const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
+    const sendAmount = MAX_SEND_AMOUNT + 1n;
     const sendNonce = 2345n;
     const recipPrivateKey = 0x20644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
     const recipPubKey = F.pow(BASE, recipPrivateKey);
@@ -315,7 +365,7 @@ async function privacyToken() {
     file: "privacy-token",
     template: "PrivacyToken",
     dir: "test/privacy-token",
-    params: [MAX_DEPTH, MAX_AMOUNT_BITS],
+    params: [MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT],
   });
   return circuit;
 }
