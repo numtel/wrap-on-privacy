@@ -13,10 +13,11 @@ const circomkit = new Circomkit({
   "include": ["node_modules/circomlib/circuits", "node_modules/@zk-kit/circuits/circom"],
 });
 
+const MAX_DEPTH = 10n;
+const MAX_AMOUNT_BITS = 19n;
+
 describe("privacy-token", () => {
   it("verifies a send/receive (both)", async () => {
-    const MAX_DEPTH = 10;
-    const MAX_AMOUNT_BITS = 19;
     const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
     const publicKey = F.pow(BASE, privateKey);
     const encAmount1 = 123n;
@@ -37,40 +38,17 @@ describe("privacy-token", () => {
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
     const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
 
-    const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
 
-    tree.insert(poseidon2([ encAmount1, ephemKey1 ]));
-    tree.insert(poseidon2([ encAmount2, ephemKey2 ]));
-
-    const { siblings: treeSiblings, index } = tree.generateProof(1);
-
-    // The index must be converted to a list of indices, 1 for each tree level.
-    // The circuit tree depth is 20, so the number of siblings must be 20, even if
-    // the tree depth is actually 3. The missing siblings can be set to 0, as they
-    // won't be used to calculate the root in the circuit.
-    const treeIndices = [];
-
-    for (let i = 0; i < MAX_DEPTH; i += 1) {
-        treeIndices.push((index >> i) & 1);
-
-        if (treeSiblings[i] === undefined) {
-            treeSiblings[i] = BigInt(0);
-        }
-    }
-
-
-    const circuit = await circomkit.WitnessTester(`privacytoken`, {
-      file: "privacy-token",
-      template: "PrivacyToken",
-      dir: "test/privacy-token",
-      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
-    });
-
+    const circuit = await privacyToken();
     await circuit.expectPass({
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
       decodedAmountReceived: sendAmount2,
-      treeDepth: tree.depth,
+      treeDepth,
       treeIndices,
       treeSiblings,
       privateKey,
@@ -80,10 +58,11 @@ describe("privacy-token", () => {
       sendAmount,
       sendNonce,
       recipPubKey,
+      isBurn: 0,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     }, {
-      treeRoot: tree.root,
+      treeRoot,
       encryptedAmountSent,
       sendEphemeralKey,
       finalBalance,
@@ -114,35 +93,12 @@ describe("privacy-token", () => {
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
     const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
 
-    const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
 
-    tree.insert(poseidon2([ encAmount1, ephemKey1 ]));
-    tree.insert(poseidon2([ encAmount2, ephemKey2 ]));
-
-    const { siblings: treeSiblings, index } = tree.generateProof(1);
-
-    // The index must be converted to a list of indices, 1 for each tree level.
-    // The circuit tree depth is 20, so the number of siblings must be 20, even if
-    // the tree depth is actually 3. The missing siblings can be set to 0, as they
-    // won't be used to calculate the root in the circuit.
-    const treeIndices = [];
-
-    for (let i = 0; i < MAX_DEPTH; i += 1) {
-        treeIndices.push((index >> i) & 1);
-
-        if (treeSiblings[i] === undefined) {
-            treeSiblings[i] = BigInt(0);
-        }
-    }
-
-
-    const circuit = await circomkit.WitnessTester(`privacytoken`, {
-      file: "privacy-token",
-      template: "PrivacyToken",
-      dir: "test/privacy-token",
-      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
-    });
-
+    const circuit = await privacyToken();
     await circuit.expectFail({
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
@@ -157,6 +113,7 @@ describe("privacy-token", () => {
       sendAmount,
       sendNonce,
       recipPubKey,
+      isBurn: 0,
       nonReceivingTreeRoot: 169n,
     });
   });
@@ -184,40 +141,17 @@ describe("privacy-token", () => {
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
     const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
 
-    const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
 
-    tree.insert(poseidon2([ encAmount1, ephemKey1 ]));
-    tree.insert(poseidon2([ encAmount2, ephemKey2 ]));
-
-    const { siblings: treeSiblings, index } = tree.generateProof(1);
-
-    // The index must be converted to a list of indices, 1 for each tree level.
-    // The circuit tree depth is 20, so the number of siblings must be 20, even if
-    // the tree depth is actually 3. The missing siblings can be set to 0, as they
-    // won't be used to calculate the root in the circuit.
-    const treeIndices = [];
-
-    for (let i = 0; i < MAX_DEPTH; i += 1) {
-        treeIndices.push((index >> i) & 1);
-
-        if (treeSiblings[i] === undefined) {
-            treeSiblings[i] = BigInt(0);
-        }
-    }
-
-
-    const circuit = await circomkit.WitnessTester(`privacytoken`, {
-      file: "privacy-token",
-      template: "PrivacyToken",
-      dir: "test/privacy-token",
-      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
-    });
-
+    const circuit = await privacyToken();
     await circuit.expectFail({
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
       decodedAmountReceived: sendAmount2,
-      treeDepth: tree.depth,
+      treeDepth,
       treeIndices,
       treeSiblings,
       privateKey,
@@ -227,6 +161,7 @@ describe("privacy-token", () => {
       sendAmount,
       sendNonce,
       recipPubKey,
+      isBurn: 0,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     });
@@ -257,35 +192,12 @@ describe("privacy-token", () => {
     const nonReceivingTreeRoot = 169n;
     const finalBalance = await symmetricEncrypt(balance - sendAmount, privateKey, newBalanceNonce);
 
-    const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
 
-    tree.insert(poseidon2([ encAmount1, ephemKey1 ]));
-    tree.insert(poseidon2([ encAmount2, ephemKey2 ]));
-
-    const { siblings: treeSiblings, index } = tree.generateProof(1);
-
-    // The index must be converted to a list of indices, 1 for each tree level.
-    // The circuit tree depth is 20, so the number of siblings must be 20, even if
-    // the tree depth is actually 3. The missing siblings can be set to 0, as they
-    // won't be used to calculate the root in the circuit.
-    const treeIndices = [];
-
-    for (let i = 0; i < MAX_DEPTH; i += 1) {
-        treeIndices.push((index >> i) & 1);
-
-        if (treeSiblings[i] === undefined) {
-            treeSiblings[i] = BigInt(0);
-        }
-    }
-
-
-    const circuit = await circomkit.WitnessTester(`privacytoken`, {
-      file: "privacy-token",
-      template: "PrivacyToken",
-      dir: "test/privacy-token",
-      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
-    });
-
+    const circuit = await privacyToken();
     await circuit.expectPass({
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
@@ -301,11 +213,70 @@ describe("privacy-token", () => {
       sendAmount,
       sendNonce,
       recipPubKey,
+      isBurn: 0,
       // This value will be output in this test case because it is NOT receiving
       nonReceivingTreeRoot,
     }, {
       treeRoot: nonReceivingTreeRoot,
       encryptedAmountSent,
+      sendEphemeralKey,
+      finalBalance,
+      receiveNullifier,
+    });
+  });
+
+  it("verifies a burn", async () => {
+    const MAX_DEPTH = 10;
+    const MAX_AMOUNT_BITS = 19;
+    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const publicKey = F.pow(BASE, privateKey);
+    const encAmount1 = 123n;
+    const ephemKey1 = 234n;
+    const sendAmount2Nonce = 456n;
+    const sendAmount2 = 223n;
+    const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
+    const balance = 987n;
+    const balanceNonce = 1234n;
+    const newBalanceNonce = 1235n;
+    const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
+    const sendAmount = balance;
+    const sendNonce = 2345n;
+    // burn by sending to ethereum address instead of pubkey
+    const recipPubKey = 0xa48c718AE6dE6599c5A46Fd6caBff54Def39473an;
+    const {ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
+    const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
+    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+    const nonReceivingTreeRoot = 169n;
+    const finalBalance = await symmetricEncrypt(balance - sendAmount, privateKey, newBalanceNonce);
+
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
+      poseidon2([ encAmount1, ephemKey1 ]),
+      poseidon2([ encAmount2, ephemKey2 ]),
+    ]);
+
+    const circuit = await privacyToken();
+    await circuit.expectPass({
+      encryptedAmountReceived: encAmount2,
+      ephemeralKeyReceived: ephemKey2,
+      decodedAmountReceived: sendAmount2,
+      // disabled receiving with treeDepth=0
+      treeDepth: 0,
+      treeIndices,
+      treeSiblings,
+      privateKey,
+      encryptedBalance,
+      balanceNonce,
+      newBalanceNonce,
+      sendAmount,
+      sendNonce,
+      recipPubKey,
+      isBurn: 1,
+      // This value will be output in this test case because it is NOT receiving
+      nonReceivingTreeRoot,
+    }, {
+      treeRoot: nonReceivingTreeRoot,
+      // burns don't encrypt the amount sent
+      encryptedAmountSent: sendAmount,
       sendEphemeralKey,
       finalBalance,
       receiveNullifier,
@@ -335,6 +306,40 @@ describe("encryption-asymmetric", () => {
     );
   });
 });
+
+async function privacyToken() {
+  const circuit = await circomkit.WitnessTester(`privacytoken`, {
+    file: "privacy-token",
+    template: "PrivacyToken",
+    dir: "test/privacy-token",
+    params: [MAX_DEPTH, MAX_AMOUNT_BITS],
+  });
+  return circuit;
+}
+
+function genTree(items) {
+  const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+
+  items.forEach(item => tree.insert(item));
+
+  const { siblings: treeSiblings, index } = tree.generateProof(1);
+
+  // The index must be converted to a list of indices, 1 for each tree level.
+  // The circuit tree depth is 20, so the number of siblings must be 20, even if
+  // the tree depth is actually 3. The missing siblings can be set to 0, as they
+  // won't be used to calculate the root in the circuit.
+  const treeIndices = [];
+
+  for (let i = 0; i < MAX_DEPTH; i += 1) {
+      treeIndices.push((index >> i) & 1);
+
+      if (treeSiblings[i] === undefined) {
+          treeSiblings[i] = BigInt(0);
+      }
+  }
+
+  return { treeSiblings, treeIndices, treeDepth: tree.depth, treeRoot: tree.root };
+}
 
 async function asymmetricEncrypt(secret, publicKey, nonce) {
   const circuitEncrypt = await circomkit.WitnessTester(`asymmetricencrypt`, {

@@ -23,6 +23,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   signal input sendAmount;
   signal input sendNonce;
   signal input recipPubKey;
+  signal input isBurn;
   // when the treeDepth=0 (it's a proof that doesn't receive), the valid tree root is passed here
   signal input nonReceivingTreeRoot;
 
@@ -57,7 +58,9 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   sendEncrypter.publicKey <== recipPubKey;
   sendEncrypter.nonce <== sendNonce;
   sendEncrypter.ephemeralKey ==> sendEphemeralKey;
-  sendEncrypter.encryptedMessage ==> encryptedAmountSent;
+  var encAmtSentIfNotBurn = sendEncrypter.encryptedMessage;
+
+  encryptedAmountSent <== IfElse()(isBurn, sendAmount, encAmtSentIfNotBurn);
 
   var finalBalanceRaw = newBalanceRaw - sendAmount;
   finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);
