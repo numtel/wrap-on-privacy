@@ -1,0 +1,22 @@
+{
+  "name": "wrap-on-privacy",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test:libraries": "mocha",
+    "test:contracts": "forge test",
+    "test": "mocha && forge test"
+  },
+  "dependencies": {
+    "@zk-kit/circuits": "0.2.3",
+    "@zk-kit/imt": "2.0.0-beta",
+    "circomlib": "2.0.5",
+    "ffjavascript": "0.2.62",
+    "poseidon-lite": "0.2.0",
+    "snarkjs": "0.7.5"
+  },
+  "devDependencies": {
+    "circomkit": "0.3.1",
+    "mocha": "10.8.2"
+  }
+}

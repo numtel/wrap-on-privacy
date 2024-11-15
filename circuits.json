@@ -1,0 +1,8 @@
+{
+  "privacytoken": {
+    "file": "circuits/privacy-token",
+    "template": "PrivacyToken",
+    "pubs": [],
+    "params": [20]
+  }
+}
