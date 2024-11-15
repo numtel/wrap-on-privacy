@@ -26,6 +26,7 @@ describe("privacy-token", () => {
     const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
     const balance = 987n;
     const balanceNonce = 1234n;
+    const newBalanceNonce = 1235n;
     const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
     const sendAmount = balance + sendAmount2 - 1n;
     const sendNonce = 2345n;
@@ -34,6 +35,7 @@ describe("privacy-token", () => {
     const {encryptedMessage: encryptedAmountSent, ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
     const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+    const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
 
     const tree = new LeanIMT((a, b) => poseidon2([a, b]));
 
@@ -74,9 +76,12 @@ describe("privacy-token", () => {
       privateKey,
       encryptedBalance,
       balanceNonce,
+      newBalanceNonce,
       sendAmount,
       sendNonce,
       recipPubKey,
+      // This value will not be output in this test case because it is receiving
+      nonReceivingTreeRoot: 0n,
     }, {
       treeRoot: tree.root,
       decryptedBalance: balance,
@@ -85,6 +90,91 @@ describe("privacy-token", () => {
       encryptedAmountSent,
       sendEphemeralKey,
       finalBalanceRaw: balance + sendAmount2 - sendAmount,
+      finalBalance,
+      receiveNullifier,
+    });
+  });
+
+  it("verifies a send without receive", async () => {
+    const MAX_DEPTH = 10;
+    const MAX_AMOUNT_BITS = 19;
+    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const publicKey = F.pow(BASE, privateKey);
+    const encAmount1 = 123n;
+    const ephemKey1 = 234n;
+    const sendAmount2Nonce = 456n;
+    const sendAmount2 = 223n;
+    const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
+    const balance = 987n;
+    const balanceNonce = 1234n;
+    const newBalanceNonce = 1235n;
+    const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
+    // different sendAmount than 'both' test case
+    const sendAmount = balance;
+    const sendNonce = 2345n;
+    const recipPrivateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const recipPubKey = F.pow(BASE, recipPrivateKey);
+    const {encryptedMessage: encryptedAmountSent, ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
+    const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
+    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+    const nonReceivingTreeRoot = 169n;
+    const finalBalance = await symmetricEncrypt(balance - sendAmount, privateKey, newBalanceNonce);
+
+    const tree = new LeanIMT((a, b) => poseidon2([a, b]));
+
+    tree.insert(poseidon2([ encAmount1, ephemKey1 ]));
+    tree.insert(poseidon2([ encAmount2, ephemKey2 ]));
+
+    const { siblings: treeSiblings, index } = tree.generateProof(1);
+
+    // The index must be converted to a list of indices, 1 for each tree level.
+    // The circuit tree depth is 20, so the number of siblings must be 20, even if
+    // the tree depth is actually 3. The missing siblings can be set to 0, as they
+    // won't be used to calculate the root in the circuit.
+    const treeIndices = [];
+
+    for (let i = 0; i < MAX_DEPTH; i += 1) {
+        treeIndices.push((index >> i) & 1);
+
+        if (treeSiblings[i] === undefined) {
+            treeSiblings[i] = BigInt(0);
+        }
+    }
+
+
+    const circuit = await circomkit.WitnessTester(`privacytoken`, {
+      file: "privacy-token",
+      template: "PrivacyToken",
+      dir: "test/privacy-token",
+      params: [MAX_DEPTH, MAX_AMOUNT_BITS],
+    });
+
+    await circuit.expectPass({
+      encryptedAmountReceived: encAmount2,
+      ephemeralKeyReceived: ephemKey2,
+      decodedAmountReceived: sendAmount2,
+      // disabled receiving with treeDepth=0
+      treeDepth: 0,
+      treeIndices,
+      treeSiblings,
+      privateKey,
+      encryptedBalance,
+      balanceNonce,
+      newBalanceNonce,
+      sendAmount,
+      sendNonce,
+      recipPubKey,
+      // This value will be output in this test case because it is NOT receiving
+      nonReceivingTreeRoot,
+    }, {
+      treeRoot: nonReceivingTreeRoot,
+      decryptedBalance: balance,
+      decryptedAmountReceived: F.pow(BASE, sendAmount2),
+      newBalanceRaw: balance,
+      encryptedAmountSent,
+      sendEphemeralKey,
+      finalBalanceRaw: balance - sendAmount,
+      finalBalance,
       receiveNullifier,
     });
   });

@@ -5,6 +5,7 @@ include "poseidon.circom";
 include "comparators.circom";
 include "binary-merkle-root.circom";
 
+include "control-flow.circom";
 include "exponentiate.circom";
 include "encryption-symmetric.circom";
 include "encryption-asymmetric.circom";
@@ -13,6 +14,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   signal input privateKey;
   signal input encryptedBalance;
   signal input balanceNonce;
+  signal input newBalanceNonce;
   signal input decodedAmountReceived;
   signal input encryptedAmountReceived;
   signal input ephemeralKeyReceived;
@@ -20,6 +22,8 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   signal input sendAmount;
   signal input sendNonce;
   signal input recipPubKey;
+  // when the treeDepth=0 (it's a proof that doesn't receive), the valid tree root is passed here
+  signal input nonReceivingTreeRoot;
 
   signal output treeRoot;
   signal output decryptedBalance;
@@ -28,6 +32,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   signal output encryptedAmountSent;
   signal output sendEphemeralKey;
   signal output finalBalanceRaw;
+  signal output finalBalance;
   signal output receiveNullifier;
 
   var pubKey = Exponentiate()(2, privateKey);
@@ -36,15 +41,18 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
 
   var receiveTxHash = Poseidon(2)([encryptedAmountReceived, ephemeralKeyReceived]);
 
-  treeRoot <== BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash, treeDepth, treeIndices, treeSiblings);
+  var notReceiving = IsZero()(treeDepth);
+  var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash, treeDepth, treeIndices, treeSiblings);
+  treeRoot <== IfElse()(notReceiving, nonReceivingTreeRoot, calcTreeRoot);
 
   decryptedAmountReceived <== AsymmetricDecrypt()(privateKey, ephemeralKeyReceived, encryptedAmountReceived);
   var checkDecryptedAmountReceived = Exponentiate()(2, decodedAmountReceived);
   decryptedAmountReceived === checkDecryptedAmountReceived;
 
-  newBalanceRaw <== decryptedBalance + decodedAmountReceived;
+  var newBalanceIfReceiving = decryptedBalance + decodedAmountReceived;
+  newBalanceRaw <== IfElse()(notReceiving, decryptedBalance, newBalanceIfReceiving);
 
-  var sendAmountValid = LessEqThan(MAX_AMOUNT_BITS)([ newBalanceRaw, sendAmount ]);
+  var sendAmountValid = LessThan(MAX_AMOUNT_BITS)([ newBalanceRaw, sendAmount ]);
   sendAmountValid === 0;
 
   component sendEncrypter = AsymmetricEncrypt();
@@ -55,6 +63,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
   sendEncrypter.encryptedMessage ==> encryptedAmountSent;
 
   finalBalanceRaw <== newBalanceRaw - sendAmount;
+  finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);
 
   receiveNullifier <== Poseidon(2)([ receiveTxHash, privateKey ]);
 
