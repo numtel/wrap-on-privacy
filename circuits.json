@@ -2,7 +2,7 @@
   "privacytoken": {
     "file": "circuits/privacy-token",
     "template": "PrivacyToken",
-    "pubs": [],
-    "params": [20]
+    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce"],
+    "params": [32, 252]
   }
 }

@@ -5,7 +5,9 @@
   "scripts": {
     "test:libraries": "mocha -t 50000",
     "test:contracts": "forge test",
-    "test": "mocha && forge test"
+    "test": "mocha -t 50000 && forge test",
+    "compile:circuit": "circomkit compile privacytoken",
+    "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom"
   },
   "dependencies": {
     "@zk-kit/circuits": "0.2.3",
@@ -17,6 +19,7 @@
   },
   "devDependencies": {
     "circomkit": "0.3.1",
+    "circuitscan": "0.1.3",
     "mocha": "10.8.2"
   }
 }

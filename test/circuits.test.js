@@ -13,8 +13,8 @@ const circomkit = new Circomkit({
   "include": ["node_modules/circomlib/circuits", "node_modules/@zk-kit/circuits/circom"],
 });
 
-const MAX_DEPTH = 10n;
-const MAX_AMOUNT_BITS = 19n;
+const MAX_DEPTH = 32n;
+const MAX_AMOUNT_BITS = 252n;
 
 describe("privacy-token", () => {
   it("verifies a send/receive (both)", async () => {
@@ -255,7 +255,7 @@ describe("privacy-token", () => {
     ]);
 
     const circuit = await privacyToken();
-    await circuit.expectPass({
+    const input = {
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
       decodedAmountReceived: sendAmount2,
@@ -273,7 +273,10 @@ describe("privacy-token", () => {
       isBurn: 1,
       // This value will be output in this test case because it is NOT receiving
       nonReceivingTreeRoot,
-    }, {
+    };
+//     console.log(JSON.stringify(input, null, 2));
+    await circuit.expectPass(input, {
+      publicKey,
       treeRoot: nonReceivingTreeRoot,
       // burns don't encrypt the amount sent
       encryptedAmountSent: sendAmount,

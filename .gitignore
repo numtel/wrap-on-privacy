@@ -2,6 +2,8 @@
 circuits/test/
 node_modules/
 # Compiler files
+build/
+main/
 cache/
 out/
 
