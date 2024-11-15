@@ -1,6 +1,7 @@
 pragma circom 2.1.5;
 
 include "babyjub.circom";
+include "gates.circom";
 include "poseidon.circom";
 include "comparators.circom";
 include "binary-merkle-root.circom";
@@ -67,5 +68,8 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS) {
 
   receiveNullifier <== Poseidon(2)([ receiveTxHash, privateKey ]);
 
+  // A proof must at least send or receive, it can't be a no-op spamming the tree
+  var didntSendOrReceive = AND()(IsZero()(sendAmount), IsZero()(treeDepth));
+  didntSendOrReceive === 0;
 }
 
