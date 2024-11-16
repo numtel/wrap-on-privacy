@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/*
+#logo {
+  background-image: url(images/logo-light.png);
+  background-repeat: no-repeat;
+  background-position: 10px center;
+  background-size: auto 75%;
+}
+@media (prefers-color-scheme: dark) {
+#logo {
+  background-image: url(images/logo-dark.png);
+}}
+
+*/
