@@ -1,3 +1,5 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
 interface IPrivateToken {
   struct PrivateSend {
@@ -23,6 +25,10 @@ interface IPrivateToken {
   }
 
   error PrivateToken__InvalidProof();
+  error PrivateToken__DuplicateNullifier();
+  error PrivateToken__InvalidBalance();
+  error PrivateToken__InvalidBalanceNonce();
+  error PrivateToken__InvalidTreeRoot();
 
   function sendCount() external view returns (uint256);
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) external;
