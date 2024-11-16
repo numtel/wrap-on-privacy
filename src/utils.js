@@ -15,6 +15,14 @@ export function elgamalDecrypt(privateKey, ephemeralKey, encryptedMessage) {
   return decryptedMessage;
 }
 
+export function elgamalEncrypt(secret, publicKey, nonce) {
+  const encodedSecret = F.pow(BASE, secret);
+  const ephemeralKey = F.pow(BASE, nonce);
+  const maskingKey = F.pow(publicKey, nonce);
+  const encryptedMessage = F.mul(encodedSecret, maskingKey);
+  return { ephemeralKey, encryptedMessage };
+}
+
 export function elgamalDecode(decryptedMessage) {
   if(!lookupTable) {
     const list = [];

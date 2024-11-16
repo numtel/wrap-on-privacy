@@ -22,6 +22,7 @@ import {
   pubKey,
   randomBigInt,
 } from '../utils.js';
+import SendPrivate from './SendPrivate.js';
 
 export default function Transactions({ privateKey }) {
   const [myTx, setMyTx] = useState([]);
@@ -42,19 +43,17 @@ export default function Transactions({ privateKey }) {
   });
   if(isError) return <p>Error loading send count!</p>;
   if(isLoading) return <p>Loading send count...</p>;
-  console.log(data);
   const balance = poseidonDecrypt(privateKey, data[1].result[1], data[1].result[0]);
-  console.log(balance);
   return <>
     <p>
       My private balance:
       <span>{(balance / 100n).toString()}</span>
     </p>
-    <FindMyTx {...{privateKey}} sendCount={Number(data[0].result)} />
+    <FindMyTx {...{privateKey}} encryptedBalance={data[1].result[0]} balanceNonce={data[1].result[1]} sendCount={Number(data[0].result)} />
   </>;
 }
 
-function FindMyTx({ sendCount, privateKey }) {
+function FindMyTx({ sendCount, privateKey, encryptedBalance, balanceNonce }) {
   const [filtered, setFiltered] = useState([]);
   // XXX fine for small pools
   const { data, isError, isLoading } = useReadContracts({
@@ -88,11 +87,12 @@ function FindMyTx({ sendCount, privateKey }) {
   if(isLoading) return <p>Loading send amounts...</p>;
 
   return (<>
-    {filtered.map(item => <MyTx key={item.receiveNullifier} fullList={data} {...item} {...{privateKey}} />)}
+    <SendPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
+    {filtered.map(item => <MyTx key={item.receiveNullifier} fullList={data} {...item} {...{privateKey, encryptedBalance, balanceNonce}} />)}
   </>);
 }
 
-function MyTx({ amount, receiveNullifier, privateKey, fullList, index }) {
+function MyTx({ amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce }) {
   const { data, isError, isLoading } = useReadContract({
     abi,
     address: byChain[defaultChain].PrivateToken,
@@ -105,12 +105,12 @@ function MyTx({ amount, receiveNullifier, privateKey, fullList, index }) {
     {isError && <span>(Error loading status!)</span>}
     {typeof data === 'boolean' && !data && <span>
       (Pending)
-      <ReceiveTx {...{amount, receiveNullifier, privateKey, fullList, index}} />
+      <ReceiveTx {...{amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce}} />
     </span>}
   </p>;
 }
 
-function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index }) {
+function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce }) {
   const [tree, setTree] = useState(null);
   const { writeContract, isPending, isError, data } = useWriteContract();
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
@@ -122,8 +122,7 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index }) {
 
   async function acceptTx() {
     toast.loading('Generating proof...');
-    // TODO this only works for first proof submitted, when account is 0/0
-    const balanceNonce = randomBigInt(252);
+    const firstBalanceNonce = randomBigInt(252);
     const newBalanceNonce = randomBigInt(252);
     const sendNonce = randomBigInt(252);
     const input = {
@@ -134,8 +133,8 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index }) {
       treeIndices: tree.treeIndices,
       treeSiblings: tree.treeSiblings,
       privateKey,
-      encryptedBalance: poseidon2([ privateKey, balanceNonce ]),
-      balanceNonce,
+      encryptedBalance: encryptedBalance === 0n ? poseidon2([ privateKey, firstBalanceNonce ]) : encryptedBalance,
+      balanceNonce: balanceNonce === 0n ? firstBalanceNonce : balanceNonce,
       newBalanceNonce,
       sendAmount: 0,
       sendNonce,
@@ -145,6 +144,7 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index }) {
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     };
+    console.log(input, encryptedBalance, balanceNonce);
     const proof = await groth16.fullProve(
       input,
       '/verify_circuit.wasm',
@@ -153,6 +153,13 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index }) {
     console.log(proof);
     const args = getCalldata(proof);
     console.log(args);
+    console.log({
+      abi,
+      address: byChain[defaultChain].PrivateToken,
+      functionName: 'verifyProof',
+      args,
+
+    });
     writeContract({
       abi,
       address: byChain[defaultChain].PrivateToken,
