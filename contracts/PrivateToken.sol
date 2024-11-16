@@ -36,6 +36,10 @@ contract PrivateToken is IPrivateToken {
     return encryptedSends.length;
   }
 
+  function treeRoot() external view returns (uint256) {
+    return sendTree._root();
+  }
+
   function mint(uint256 amount, uint256 recipPubKey, uint256 nonce) external {
     if(amount > MAX_SEND) {
       revert PrivateToken__InvalidAmount();
@@ -113,7 +117,7 @@ contract PrivateToken is IPrivateToken {
       uint256 base,
       uint256 exponent,
       uint256 modulus
-  ) internal view returns (uint256 result) {
+  ) public view returns (uint256 result) {
       assembly {
           let pointer := mload(0x40) // Free memory pointer
           mstore(pointer, 0x20)     // Base length (32 bytes)
@@ -134,7 +138,7 @@ contract PrivateToken is IPrivateToken {
       uint256 a,
       uint256 b,
       uint256 modulus
-  ) internal pure returns (uint256 result) {
+  ) public pure returns (uint256 result) {
       assembly {
           let mm := mulmod(a, b, modulus)
           result := mm
