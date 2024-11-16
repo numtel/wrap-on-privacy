@@ -49,7 +49,8 @@ contract PrivateTokenTest is Test, IPrivateToken {
       receiveNullifier,
       ogBalance,
       balanceNonce,
-      newBalanceNonce
+      newBalanceNonce,
+      1 // is a burn
     ]);
     assertEq(token.balanceOf(recip), privateAmount * (10**2));
   }
@@ -83,7 +84,8 @@ contract PrivateTokenTest is Test, IPrivateToken {
       receiveNullifier,
       ogBalance,
       balanceNonce,
-      newBalanceNonce
+      newBalanceNonce,
+      0 // not a burn
     ]);
     (uint afterBalance, uint afterBalanceNonce) = wrapper.accounts(publicKey);
 

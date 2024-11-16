@@ -22,6 +22,7 @@ interface IPrivateToken {
     uint256 encryptedBalance;
     uint256 balanceNonce;
     uint256 newBalanceNonce;
+    uint256 isBurn;
   }
 
   error PrivateToken__InvalidProof();

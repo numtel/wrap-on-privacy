@@ -10,9 +10,7 @@ import "./IPrivateToken.sol";
 contract PrivateToken is IPrivateToken {
   using InternalLeanIMT for LeanIMTData;
 
-  // 19 out of 253 bits :fingers_crossed: XD
-  // (i.e. if someone can find a poseidon hash that has 253-19 leading 0 bits,
-  //   they can get free tokens)
+  // For reasonable decoding times
   uint256 public constant MAX_SEND = 524288; // 2**19
 
   uint8 public reduceDecimals;
@@ -57,7 +55,7 @@ contract PrivateToken is IPrivateToken {
     wrappedToken.transferFrom(msg.sender, address(this), amount * (10 ** reduceDecimals));
   }
 
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) external {
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external {
     if(!verifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
       revert PrivateToken__InvalidProof();
     }
@@ -85,7 +83,7 @@ contract PrivateToken is IPrivateToken {
     if(sendTree._root() != pubs.treeRoot) {
       revert PrivateToken__InvalidTreeRoot();
     }
-    if(pubs.encryptedAmountSent <= MAX_SEND) {
+    if(pubs.isBurn != 0) {
       // This is a burn
       // get recip address (recipPubKey) from the sendEphemeralKey
       wrappedToken.transfer(address(uint160(pubs.sendEphemeralKey)), pubs.encryptedAmountSent * (10 ** reduceDecimals));
@@ -98,7 +96,7 @@ contract PrivateToken is IPrivateToken {
 
   }
 
-  function parsePubSignals(uint[9] calldata _pubSignals) internal pure returns (PubSignals memory) {
+  function parsePubSignals(uint[10] calldata _pubSignals) internal pure returns (PubSignals memory) {
     return PubSignals(
       _pubSignals[0],
       _pubSignals[1],
@@ -108,7 +106,8 @@ contract PrivateToken is IPrivateToken {
       _pubSignals[5],
       _pubSignals[6],
       _pubSignals[7],
-      _pubSignals[8]
+      _pubSignals[8],
+      _pubSignals[9]
     );
   }
 
@@ -148,5 +147,5 @@ contract PrivateToken is IPrivateToken {
 }
 
 interface IVerifier {
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) external view returns (bool);
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external view returns (bool);
 }

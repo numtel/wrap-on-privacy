@@ -10,7 +10,7 @@
     "test": "mocha -t 50000 && forge test",
     "compile:circuit": "circomkit compile privacytoken",
     "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
-    "deploy:contract": "VERIFIER_ADDRESS=0xa449f1f4c7b3040634864c20636c85e1267ec2c0 forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_holesky  --broadcast --verify -vvvv"
+    "deploy:contract": "VERIFIER_ADDRESS=0x775f171b3ff67348284bbaf9244b3b4d6d37465a forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
