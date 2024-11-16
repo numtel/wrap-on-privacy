@@ -23,6 +23,7 @@ import {
   randomBigInt,
 } from '../utils.js';
 import SendPrivate from './SendPrivate.js';
+import BurnPrivate from './BurnPrivate.js';
 
 export default function Transactions({ privateKey }) {
   const [myTx, setMyTx] = useState([]);
@@ -88,6 +89,7 @@ function FindMyTx({ sendCount, privateKey, encryptedBalance, balanceNonce }) {
 
   return (<>
     <SendPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
+    <BurnPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
     {filtered.map(item => <MyTx key={item.receiveNullifier} fullList={data} {...item} {...{privateKey, encryptedBalance, balanceNonce}} />)}
   </>);
 }
