@@ -324,8 +324,7 @@ describe("privacy-token", () => {
       // This value will be output in this test case because it is NOT receiving
       nonReceivingTreeRoot,
     };
-//     console.log(JSON.stringify(input, null, 2));
-    await circuit.expectPass(input, {
+    const output = {
       publicKey,
       treeRoot: nonReceivingTreeRoot,
       // burns don't encrypt the amount sent
@@ -333,7 +332,10 @@ describe("privacy-token", () => {
       sendEphemeralKey,
       finalBalance,
       receiveNullifier,
-    });
+    };
+//     console.log(JSON.stringify(input, null, 2));
+//     console.log(JSON.stringify(output, null, 2));
+    await circuit.expectPass(input, output);
   });
 });
 
