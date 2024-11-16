@@ -10,7 +10,7 @@ import {
 import {
   WagmiProvider,
 } from 'wagmi';
-import * as chains from 'wagmi/chains';
+import {sepolia} from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
@@ -18,14 +18,10 @@ import {
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
-import {removeDuplicates} from '../utils.js';
-
-const chainsFixed = removeDuplicates(chains);
-
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',
   projectId: '3ab784972e6540d0095810e72372cfd1',
-  chains: Object.values(chainsFixed),
+  chains: [sepolia],
 });
 
 const queryClient = new QueryClient();
