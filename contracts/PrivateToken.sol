@@ -69,11 +69,19 @@ contract PrivateToken is IPrivateToken {
     receivedHashes[pubs.receiveNullifier] = true;
 
     // Update the user's balance
-    if(accounts[pubs.publicKey].encryptedBalance != pubs.encryptedBalance) {
+    uint encBalance = accounts[pubs.publicKey].encryptedBalance;
+    uint curNonce = accounts[pubs.publicKey].nonce;
+    if(encBalance > 0 && encBalance != pubs.encryptedBalance) {
       revert PrivateToken__InvalidBalance();
     }
-    if(accounts[pubs.publicKey].nonce != pubs.balanceNonce) {
+    if(curNonce > 0 && curNonce != pubs.balanceNonce) {
       revert PrivateToken__InvalidBalanceNonce();
+    }
+    if(pubs.finalBalance == 0) {
+      revert PrivateToken__InvalidNewBalance();
+    }
+    if(pubs.newBalanceNonce == 0) {
+      revert PrivateToken__InvalidNewBalanceNonce();
     }
     accounts[pubs.publicKey].encryptedBalance = pubs.finalBalance;
     accounts[pubs.publicKey].nonce = pubs.newBalanceNonce;

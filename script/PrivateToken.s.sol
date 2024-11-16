@@ -12,6 +12,6 @@ contract Deploy is Script {
     vm.startBroadcast(deployerPrivateKey);
 
     MockERC20 token = new MockERC20();
-    new PrivateToken(address(token), 2, vm.envAddress("VERIFIER_ADDRESS"));
+    new PrivateToken(address(token), 16, vm.envAddress("VERIFIER_ADDRESS"));
   }
 }

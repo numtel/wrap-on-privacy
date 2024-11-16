@@ -24,6 +24,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   signal input sendNonce;
   signal input recipPubKey;
   signal input isBurn;
+  signal input isReceiving;
   // when the treeDepth=0 (it's a proof that doesn't receive), the valid tree root is passed here
   signal input nonReceivingTreeRoot;
 
@@ -40,16 +41,15 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
 
   var receiveTxHash = Poseidon(2)([encryptedAmountReceived, ephemeralKeyReceived]);
 
-  var notReceiving = IsZero()(treeDepth);
   var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash, treeDepth, treeIndices, treeSiblings);
-  treeRoot <== IfElse()(notReceiving, nonReceivingTreeRoot, calcTreeRoot);
+  treeRoot <== IfElse()(isReceiving, calcTreeRoot, nonReceivingTreeRoot);
 
   var decryptedAmountReceived = AsymmetricDecrypt()(privateKey, ephemeralKeyReceived, encryptedAmountReceived);
   var checkDecryptedAmountReceived = Exponentiate()(2, decodedAmountReceived);
   decryptedAmountReceived === checkDecryptedAmountReceived;
 
   var newBalanceIfReceiving = decryptedBalance + decodedAmountReceived;
-  var newBalanceRaw = IfElse()(notReceiving, decryptedBalance, newBalanceIfReceiving);
+  var newBalanceRaw = IfElse()(isReceiving, newBalanceIfReceiving, decryptedBalance);
 
   component validSendAmount = LessThan(MAX_AMOUNT_BITS);
   validSendAmount.in[0] <== newBalanceRaw;
@@ -80,7 +80,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   // A proof must at least send or receive, it can't be a no-op spamming the tree
   component notNoop = AND();
   notNoop.a <== IsZero()(sendAmount);
-  notNoop.b <== IsZero()(treeDepth);
+  notNoop.b <== IsZero()(isReceiving);
   notNoop.out === 0;
 
 }

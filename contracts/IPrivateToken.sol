@@ -31,6 +31,8 @@ interface IPrivateToken {
   error PrivateToken__InvalidBalanceNonce();
   error PrivateToken__InvalidTreeRoot();
   error PrivateToken__InvalidAmount();
+  error PrivateToken__InvalidNewBalance();
+  error PrivateToken__InvalidNewBalanceNonce();
 
 //   function sendCount() external view returns (uint256);
 //   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) external;

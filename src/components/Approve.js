@@ -6,6 +6,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
+import {formatUnits} from 'viem';
 
 import abi from '../abi/MockERC20.json';
 import {byChain, defaultChain} from '../contracts.js';
@@ -45,7 +46,7 @@ export default function Approve({ amount }) {
     >
       Approve
     </button>
-    {approveData && <p>My approval amount: <span>{approveData[0].result.toString()}</span></p>}
+    {approveData && <p>My approval amount: <span>{formatUnits(approveData[0].result, 18)}</span></p>}
     {!data && isPending && <p>Waiting for using to submit...</p>}
     {!data && isError && <p>Error submitting.</p>}
     {data && txError && <p>Transaction error!</p>}

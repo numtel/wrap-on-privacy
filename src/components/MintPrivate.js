@@ -6,6 +6,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
+import {formatUnits} from 'viem';
 
 import erc20Abi from '../abi/MockERC20.json';
 import abi from '../abi/PrivateToken.json';
@@ -38,11 +39,9 @@ export default function MintPrivate({ amount, recipPubKey }) {
       functionName: 'mint',
       args: [ amount, recipPubKey, nonce ]
     };
-    console.log(params);
     writeContract(params);
     
   }
-  console.log(balanceData);
   
   return (<>
     <button
@@ -52,8 +51,8 @@ export default function MintPrivate({ amount, recipPubKey }) {
       Wrap into privacy pool
     </button>
     {balanceData && <p>
-      My balance:
-      <span>{balanceData[0].result.toString()}</span>
+      My public balance:
+      <span>{formatUnits(balanceData[0].result, 18)}</span>
     </p>}
     {!data && isPending && <p>Waiting for using to submit...</p>}
     {!data && isError && <p>Error submitting.</p>}

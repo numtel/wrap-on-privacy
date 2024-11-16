@@ -9,8 +9,9 @@ import {
 } from '../utils.js';
 import Approve from './Approve.js';
 import MintPrivate from './MintPrivate.js';
+import Transactions from './Transactions.js';
 
-export default function Accounts() {
+export default function Accounts({ amount }) {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [keypair, setKeypair] = useState(null);
@@ -41,8 +42,9 @@ export default function Accounts() {
           </span>
         </p>
         <p>This is your address to receive tokens privately.</p>
-        <Approve amount={100000n} />
-        <MintPrivate amount={1000n} recipPubKey={keypair.pub} />
+        <Approve amount={amount} />
+        <MintPrivate amount={amount / (10n ** 16n)} recipPubKey={keypair.pub} />
+        <Transactions privateKey={keypair.priv} />
       </>}
     </>}
   </>);

@@ -60,6 +60,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 0,
+      isReceiving: 1,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     }, {
@@ -115,6 +116,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 0,
+      isReceiving: 0,
       nonReceivingTreeRoot: 169n,
     });
   });
@@ -163,6 +165,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 0,
+      isReceiving: 1,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     });
@@ -212,6 +215,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 0,
+      isReceiving: 1,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     });
@@ -252,8 +256,7 @@ describe("privacy-token", () => {
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
       decodedAmountReceived: sendAmount2,
-      // disabled receiving with treeDepth=0
-      treeDepth: 0,
+      treeDepth,
       treeIndices,
       treeSiblings,
       privateKey,
@@ -264,6 +267,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 0,
+      isReceiving: 0,
       // This value will be output in this test case because it is NOT receiving
       nonReceivingTreeRoot,
     }, {
@@ -308,8 +312,7 @@ describe("privacy-token", () => {
       encryptedAmountReceived: encAmount2,
       ephemeralKeyReceived: ephemKey2,
       decodedAmountReceived: sendAmount2,
-      // disabled receiving with treeDepth=0
-      treeDepth: 0,
+      treeDepth,
       treeIndices,
       treeSiblings,
       privateKey,
@@ -320,6 +323,7 @@ describe("privacy-token", () => {
       sendNonce,
       recipPubKey,
       isBurn: 1,
+      isReceiving: 0,
       // This value will be output in this test case because it is NOT receiving
       nonReceivingTreeRoot,
     };
