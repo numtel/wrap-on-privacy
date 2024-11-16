@@ -1,10 +1,16 @@
 # Wrap on Privacy
 
+![Wrap on privacy logo](public/wrap-on-privacy.png)
+
 Deploy a privacy pool for an ERC20 that hides amounts sent and recipients
 
 Buy a coffee without exposing your entire financial history!
 
+[View project on ETHGlobal showcase](https://ethglobal.com/showcase/wrap-on-privacy-ryuw6)
+
 ## Installation
+
+Requires Node.js, Circom, and Foundry installed
 
 ```sh
 $ npm install
