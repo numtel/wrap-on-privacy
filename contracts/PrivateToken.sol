@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {InternalLeanIMT, LeanIMTData} from "./InternalLeanIMT.sol";
+import {InternalLeanIMT, LeanIMTData, SNARK_SCALAR_FIELD} from "./InternalLeanIMT.sol";
 import {PoseidonT3} from "./PoseidonT3.sol";
 
 import "./IPrivateToken.sol";
@@ -10,6 +10,9 @@ import "./IPrivateToken.sol";
 contract PrivateToken is IPrivateToken {
   using InternalLeanIMT for LeanIMTData;
 
+  // 19 out of 253 bits :fingers_crossed: XD
+  // (i.e. if someone can find a poseidon hash that has 253-19 leading 0 bits,
+  //   they can get free tokens)
   uint256 public constant MAX_SEND = 524288; // 2**19
 
   uint8 public reduceDecimals;
@@ -31,6 +34,23 @@ contract PrivateToken is IPrivateToken {
 
   function sendCount() external view returns (uint256) {
     return encryptedSends.length;
+  }
+
+  function mint(uint256 amount, uint256 recipPubKey, uint256 nonce) external {
+    if(amount > MAX_SEND) {
+      revert PrivateToken__InvalidAmount();
+    }
+    // ElGamal encrypt the new funds
+    uint256 encodedSecret = modExp(2, amount, SNARK_SCALAR_FIELD);
+    uint256 ephemeralKey = modExp(2, nonce, SNARK_SCALAR_FIELD);
+    uint256 maskingKey = modExp(recipPubKey, nonce, SNARK_SCALAR_FIELD);
+    uint256 encryptedAmount = modMul(encodedSecret, maskingKey, SNARK_SCALAR_FIELD);
+
+    uint256 receiveTxHash = PoseidonT3.hash([encryptedAmount, ephemeralKey]);
+    encryptedSends.push(PrivateSend(encryptedAmount, ephemeralKey));
+    sendTree._insert(receiveTxHash);
+
+    wrappedToken.transferFrom(msg.sender, address(this), amount * (10 ** reduceDecimals));
   }
 
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) external {
@@ -63,7 +83,8 @@ contract PrivateToken is IPrivateToken {
     }
     if(pubs.encryptedAmountSent <= MAX_SEND) {
       // This is a burn
-      // TODO get recip address (recipPubKey) from the sendEphemeralKey
+      // get recip address (recipPubKey) from the sendEphemeralKey
+      wrappedToken.transfer(address(uint160(pubs.sendEphemeralKey)), pubs.encryptedAmountSent * (10 ** reduceDecimals));
     } else {
       // This might be a send
       uint256 receiveTxHash = PoseidonT3.hash([pubs.encryptedAmountSent, pubs.sendEphemeralKey]);
@@ -85,6 +106,39 @@ contract PrivateToken is IPrivateToken {
       _pubSignals[7],
       _pubSignals[8]
     );
+  }
+
+  // Modular exponentiation using the precompiled contract at address 0x05
+  function modExp(
+      uint256 base,
+      uint256 exponent,
+      uint256 modulus
+  ) internal view returns (uint256 result) {
+      assembly {
+          let pointer := mload(0x40) // Free memory pointer
+          mstore(pointer, 0x20)     // Base length (32 bytes)
+          mstore(add(pointer, 0x20), 0x20) // Exponent length (32 bytes)
+          mstore(add(pointer, 0x40), 0x20) // Modulus length (32 bytes)
+          mstore(add(pointer, 0x60), base) // Base
+          mstore(add(pointer, 0x80), exponent) // Exponent
+          mstore(add(pointer, 0xa0), modulus) // Modulus
+          if iszero(staticcall(not(0), 0x05, pointer, 0xc0, pointer, 0x20)) {
+              revert(0, 0)
+          }
+          result := mload(pointer)
+      }
+  }
+
+  // Modular multiplication to prevent overflow
+  function modMul(
+      uint256 a,
+      uint256 b,
+      uint256 modulus
+  ) internal pure returns (uint256 result) {
+      assembly {
+          let mm := mulmod(a, b, modulus)
+          result := mm
+      }
   }
 
 }
