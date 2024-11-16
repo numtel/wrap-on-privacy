@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face { font-family: Modak; font-weight: 400; src: url(fonts/Modak-Regular.ttf); }
+
+body { background: #c4c1bb; color:#111; margin: 20px auto; max-width: 720px; padding: 10px;}
+
+#site-title { font-family:Modak; }
+
+#connect { position: absolute; top: 10px; right: 10px; }
+
+#testnet-mint { transform:rotate(-35deg); position:absolute; top: 60px; left:-90px;}
+button { display:block; background:#900; padding: 15px 90px; color: #fff; border-radius: 10px; margin:0 auto;}
+button:hover { background:#c00; }
+button:disabled { background: #744; color:#aaa; }
+
+form { width: 48%; float:left; margin:5px;}
+fieldset { padding: 10px; background:#9003; border-radius: 10px;}
+legend { padding: 5px; background:#ac5350; border-radius:5px; padding: 4px 10px; }
+label { display: block; padding: 5px 0;}
+label span { display:block; }
+label input { border-radius: 5px; color:#000; background:#fff9;  padding: 5px; width:100%;}
+fieldset button { margin-top: 20px; }
+
+p.balance {padding: 10px; background:#9003; border-radius: 10px; margin: 20px 0;}
+p.balance span { padding: 0 10px; }
+
+h2 { font-size: 2rem; clear:both; text-align:center;margin-top:3rem;}
+ul.incoming { clear:both; }
+ul.incoming li p { background:#0002; padding: 20px; margin: 5px; border-radius:10px; }
+ul.incoming li span.amount::before { content: "Amount: " }
+ul.incoming li p.pending { background: #9004; }
+ul.incoming button { display:inline-block; padding: 5px 15px; margin-left:20px; }
+
+
+footer {
+  margin: 80px 0 50px;
+  display:flex;
+  justify-content: center;
+}
+
+/* FA icons flash huge on page load? */
+.svg-inline--fa { max-height: 1rem; }
+footer .svg-inline--fa { max-height: 2rem; }
 
 /*
 #logo {

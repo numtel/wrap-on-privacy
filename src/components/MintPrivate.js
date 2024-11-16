@@ -1,4 +1,6 @@
 import {useState, useEffect} from 'react';
+import {LockOpenIcon} from '@heroicons/react/24/outline';
+import { toast } from 'react-hot-toast';
 
 import {
   useAccount,
@@ -31,6 +33,21 @@ export default function MintPrivate({ amount, recipPubKey }) {
     txSuccess && refetch();
   }, [ txSuccess ]);
 
+  useEffect(() => {
+    toast.dismiss();
+    if(!data && isPending) {
+      toast.loading('Waiting for user to submit...');
+    } else if(!data && isError) {
+      toast.error('Error submitting.');
+    } else if(data && txError) {
+      toast.error('Transaction error!');
+    } else if(data && txPending) {
+      toast.loading('Waiting for transaction...');
+    } else if(data && txSuccess) {
+      toast.success('Successfully entered privacy pool!');
+    }
+  }, [data, isPending, isError, txError, txPending, txSuccess]);
+
   function mint() {
     const nonce = randomBigInt(252);
     const params = {
@@ -50,15 +67,11 @@ export default function MintPrivate({ amount, recipPubKey }) {
     >
       Wrap into privacy pool
     </button>
-    {balanceData && <p>
+    {balanceData && <p className="balance">
+      <LockOpenIcon className="h-5 w-5 inline-block mr-3" />
       My public balance:
       <span>{formatUnits(balanceData[0].result, 18)}</span>
     </p>}
-    {!data && isPending && <p>Waiting for using to submit...</p>}
-    {!data && isError && <p>Error submitting.</p>}
-    {data && txError && <p>Transaction error!</p>}
-    {data && txPending && <p>Waiting for tranasction...</p>}
-    {data && txSuccess && <p>Transaction success!</p>}
   </>);
   
 }

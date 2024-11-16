@@ -30,6 +30,21 @@ export default function SendPrivate({fullList, privateKey, encryptedBalance, bal
   const { writeContract, isPending, isError, data } = useWriteContract();
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
 
+  useEffect(() => {
+    toast.dismiss();
+    if(!data && isPending) {
+      toast.loading('Waiting for user to submit...');
+    } else if(!data && isError) {
+      toast.error('Error submitting.');
+    } else if(data && txError) {
+      toast.error('Transaction error!');
+    } else if(data && txPending) {
+      toast.loading('Waiting for transaction...');
+    } else if(data && txSuccess) {
+      toast.success('Successfully sent privately!');
+    }
+  }, [data, isPending, isError, txError, txPending, txSuccess]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     toast.loading('Generating proof...');
@@ -105,9 +120,4 @@ export default function SendPrivate({fullList, privateKey, encryptedBalance, bal
       </button>
     </fieldset>
   </form>;
-  {!data && isPending && <p>Waiting for using to submit...</p>}
-  {!data && isError && <p>Error submitting.</p>}
-  {data && txError && <p>Transaction error!</p>}
-  {data && txPending && <p>Waiting for tranasction...</p>}
-  {data && txSuccess && <p>Transaction success!</p>}
 }

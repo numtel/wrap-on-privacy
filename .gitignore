@@ -4,6 +4,7 @@ node_modules/
 # Compiler files
 build/
 main/
+dist/
 cache/
 out/
 

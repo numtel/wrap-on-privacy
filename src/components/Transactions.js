@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import {LockClosedIcon} from '@heroicons/react/24/outline';
 
 import {
   useAccount,
@@ -46,7 +47,8 @@ export default function Transactions({ privateKey }) {
   if(isLoading) return <p>Loading send count...</p>;
   const balance = poseidonDecrypt(privateKey, data[1].result[1], data[1].result[0]);
   return <>
-    <p>
+    <p className="balance">
+      <LockClosedIcon className="h-5 w-5 inline-block mr-3" />
       My private balance:
       <span>{(balance / 100n).toString()}</span>
     </p>
@@ -90,7 +92,10 @@ function FindMyTx({ sendCount, privateKey, encryptedBalance, balanceNonce }) {
   return (<>
     <SendPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
     <BurnPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
-    {filtered.map(item => <MyTx key={item.receiveNullifier} fullList={data} {...item} {...{privateKey, encryptedBalance, balanceNonce}} />)}
+    <h2>Incoming Transactions</h2>
+    <ul className="incoming">
+    {filtered.map(item => <li key={item.receiveNullifier}><MyTx fullList={data} {...item} {...{privateKey, encryptedBalance, balanceNonce}} /></li>)}
+    </ul>
   </>);
 }
 
@@ -101,12 +106,11 @@ function MyTx({ amount, receiveNullifier, privateKey, fullList, index, encrypted
     functionName: 'receivedHashes',
     args: [ receiveNullifier ],
   });
-  return <p>
-    {amount/100}
+  return <p className={(typeof data === 'boolean' && !data) ? 'pending' : 'accepted'}>
+    <span className="amount">{amount/100}</span>&nbsp;
     {isLoading && <span>(Loading status...)</span>}
     {isError && <span>(Error loading status!)</span>}
-    {typeof data === 'boolean' && !data && <span>
-      (Pending)
+    {typeof data === 'boolean' && !data && <span class="controls">
       <ReceiveTx {...{amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce}} />
     </span>}
   </p>;
@@ -118,9 +122,23 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encr
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
   useEffect(() => {
     const newTree = genTree(fullList.map(x => poseidon2([x.result[0], x.result[1]])), index);
-    console.log(newTree);
     setTree(newTree);
   }, [ fullList, index]);
+
+  useEffect(() => {
+    toast.dismiss();
+    if(!data && isPending) {
+      toast.loading('Waiting for user to submit...');
+    } else if(!data && isError) {
+      toast.error('Error submitting.');
+    } else if(data && txError) {
+      toast.error('Transaction error!');
+    } else if(data && txPending) {
+      toast.loading('Waiting for transaction...');
+    } else if(data && txSuccess) {
+      toast.success('Transaction accepted!');
+    }
+  }, [data, isPending, isError, txError, txPending, txSuccess]);
 
   async function acceptTx() {
     toast.loading('Generating proof...');
@@ -146,22 +164,12 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encr
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     };
-    console.log(input, encryptedBalance, balanceNonce);
     const proof = await groth16.fullProve(
       input,
       '/verify_circuit.wasm',
       '/groth16_pkey.zkey',
     );
-    console.log(proof);
     const args = getCalldata(proof);
-    console.log(args);
-    console.log({
-      abi,
-      address: byChain[defaultChain].PrivateToken,
-      functionName: 'verifyProof',
-      args,
-
-    });
     writeContract({
       abi,
       address: byChain[defaultChain].PrivateToken,
@@ -179,9 +187,4 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encr
   >
     Accept Incoming Tx
   </button>
-  {!data && isPending && <p>Waiting for using to submit...</p>}
-  {!data && isError && <p>Error submitting.</p>}
-  {data && txError && <p>Transaction error!</p>}
-  {data && txPending && <p>Waiting for tranasction...</p>}
-  {data && txSuccess && <p>Transaction success!</p>}
 }

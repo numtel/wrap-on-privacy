@@ -3,6 +3,7 @@ import {
   useAccount,
   useWalletClient,
 } from 'wagmi';
+import {ArrowUpIcon} from '@heroicons/react/24/outline';
 
 import {
   sigToKeyPair,
@@ -10,6 +11,7 @@ import {
 import Approve from './Approve.js';
 import MintPrivate from './MintPrivate.js';
 import Transactions from './Transactions.js';
+import CopyLink from './CopyLink.js';
 
 export default function Accounts({ amount }) {
   const { address } = useAccount();
@@ -26,7 +28,7 @@ export default function Accounts({ amount }) {
 
   return (<>
     {!address ? <>
-      <p>Connect your wallet to begin.</p>
+      <p className="text-center p-10">Connect your wallet to begin.</p>
     </> : <>
       {!keypair ? <>
         <button
@@ -37,11 +39,13 @@ export default function Accounts({ amount }) {
       </> : <>
         <p>
           Public Key:
-          <span>
-            {keypair.pub.toString(16)}
-          </span>
+          <CopyLink text={keypair.pub.toString(16)} className="break-all" />
         </p>
-        <p>This is your address to receive tokens privately.</p>
+        <p className="text-center bold p-6">
+          <ArrowUpIcon className="h-5 w-5 inline-block" />
+          This is your address to receive tokens privately
+          <ArrowUpIcon className="h-5 w-5 inline-block" />
+        </p>
         <Approve amount={amount} />
         <MintPrivate amount={amount / (10n ** 16n)} recipPubKey={keypair.pub} />
         <Transactions privateKey={keypair.priv} />

@@ -1,4 +1,6 @@
 import {useState, useEffect} from 'react';
+import { toast } from 'react-hot-toast';
+import {PaperAirplaneIcon} from '@heroicons/react/24/outline';
 
 import {
   useAccount,
@@ -29,6 +31,21 @@ export default function Approve({ amount }) {
     txSuccess && refetch();
   }, [ txSuccess ]);
 
+  useEffect(() => {
+    toast.dismiss();
+    if(!data && isPending) {
+      toast.loading('Waiting for user to submit...');
+    } else if(!data && isError) {
+      toast.error('Error submitting.');
+    } else if(data && txError) {
+      toast.error('Transaction error!');
+    } else if(data && txPending) {
+      toast.loading('Waiting for transaction...');
+    } else if(data && txSuccess) {
+      toast.success('Testnet public allowance set!');
+    }
+  }, [data, isPending, isError, txError, txPending, txSuccess]);
+
   function approve() {
     writeContract({
       abi,
@@ -46,12 +63,9 @@ export default function Approve({ amount }) {
     >
       Approve
     </button>
-    {approveData && <p>My approval amount: <span>{formatUnits(approveData[0].result, 18)}</span></p>}
-    {!data && isPending && <p>Waiting for using to submit...</p>}
-    {!data && isError && <p>Error submitting.</p>}
-    {data && txError && <p>Transaction error!</p>}
-    {data && txPending && <p>Waiting for tranasction...</p>}
-    {data && txSuccess && <p>Transaction success!</p>}
+    {approveData && <p className="balance">
+      <PaperAirplaneIcon className="h-5 w-5 inline-block mr-3" />
+      My approval amount: <span>{formatUnits(approveData[0].result, 18)}</span></p>}
   </>);
   
 }
