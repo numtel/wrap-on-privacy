@@ -1,66 +1,30 @@
-## Foundry
+# Wrap on Privacy
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Deploy a privacy pool for an ERC20 that hides amounts sent and recipients
 
-Foundry consists of:
+Buy a coffee without exposing your entire financial history!
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Installation
 
-## Documentation
+```sh
+$ npm install
+# Test circuits
+$ npm run test:libraries
+# Test contracts
+$ npm run test:contracts
 
-https://book.getfoundry.sh/
+$ npm run compile:circuit
 
-## Usage
+# Deploy the circuit verifier on chain
+$ circuitscan login <apiKey>
+$ npm run deploy:circuit
 
-### Build
-
-```shell
-$ forge build
+# Create .env with PRIVATE_KEY and ETHERSCAN_API_KEY
+# Then, deploy the contract
+$ npm run deploy:contract
 ```
 
-### Test
+## License
 
-```shell
-$ forge test
-```
+MIT
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
