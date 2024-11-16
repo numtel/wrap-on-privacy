@@ -65,10 +65,12 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   sendEncrypter.secret <== sendAmount;
   sendEncrypter.publicKey <== recipPubKey;
   sendEncrypter.nonce <== sendNonce;
-  sendEncrypter.ephemeralKey ==> sendEphemeralKey;
+  var ephemKeyIfNotBurn = sendEncrypter.ephemeralKey;
   var encAmtSentIfNotBurn = sendEncrypter.encryptedMessage;
 
   encryptedAmountSent <== IfElse()(isBurn, sendAmount, encAmtSentIfNotBurn);
+  // Output recip address if it's a burn as the ephemeral key
+  sendEphemeralKey <== IfElse()(isBurn, recipPubKey, ephemKeyIfNotBurn);
 
   var finalBalanceRaw = newBalanceRaw - sendAmount;
   finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);

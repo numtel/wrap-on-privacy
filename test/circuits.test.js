@@ -293,7 +293,6 @@ describe("privacy-token", () => {
     const sendNonce = 2345n;
     // burn by sending to ethereum address instead of pubkey
     const recipPubKey = 0xa48c718AE6dE6599c5A46Fd6caBff54Def39473an;
-    const {ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
     const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
     const nonReceivingTreeRoot = 169n;
@@ -329,7 +328,7 @@ describe("privacy-token", () => {
       treeRoot: nonReceivingTreeRoot,
       // burns don't encrypt the amount sent
       encryptedAmountSent: sendAmount,
-      sendEphemeralKey,
+      sendEphemeralKey: recipPubKey,
       finalBalance,
       receiveNullifier,
     };
