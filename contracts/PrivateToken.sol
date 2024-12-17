@@ -38,6 +38,7 @@ contract PrivateToken is IPrivateToken {
     return sendTree._root();
   }
 
+  // TODO create a circuit to make mints private
   function mint(uint256 amount, uint256 recipPubKey, uint256 nonce) external {
     if(amount > MAX_SEND) {
       revert PrivateToken__InvalidAmount();
@@ -71,10 +72,10 @@ contract PrivateToken is IPrivateToken {
     // Update the user's balance
     uint encBalance = accounts[pubs.publicKey].encryptedBalance;
     uint curNonce = accounts[pubs.publicKey].nonce;
-    if(encBalance > 0 && encBalance != pubs.encryptedBalance) {
+    if(encBalance != pubs.encryptedBalance) {
       revert PrivateToken__InvalidBalance();
     }
-    if(curNonce > 0 && curNonce != pubs.balanceNonce) {
+    if(curNonce != pubs.balanceNonce) {
       revert PrivateToken__InvalidBalanceNonce();
     }
     if(pubs.finalBalance == 0) {

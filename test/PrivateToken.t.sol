@@ -11,6 +11,8 @@ contract PrivateTokenTest is Test, IPrivateToken {
   MockERC20 public token;
   MockVerifier public verifier;
 
+  error TestError();
+
   function setUp() public {
     token = new MockERC20();
     verifier = new MockVerifier();
@@ -68,11 +70,49 @@ contract PrivateTokenTest is Test, IPrivateToken {
     assertEq(token.balanceOf(address(this)), 0);
 
     (uint ogBalance, uint balanceNonce) = wrapper.accounts(publicKey);
+    assertEq(ogBalance, 0);
+    assertEq(balanceNonce, 0);
     uint256 newBalanceNonce = 678;
     uint256 receiveNullifier = 6969;
     uint256 finalBalance = PoseidonT3.hash([privateKey, newBalanceNonce]);
 
     (uint encryptedAmount, uint ephemeralKey) = encryptSend(privateAmount);
+
+    // Cannot provide a fake balance at init
+    try wrapper.verifyProof([uint(0),0], [[uint(0),0],[uint(0),0]], [uint(0),0], [
+      publicKey,
+      wrapper.treeRoot(),
+      encryptedAmount,
+      ephemeralKey,
+      finalBalance,
+      receiveNullifier,
+      100,
+      balanceNonce,
+      newBalanceNonce,
+      0 // not a burn
+    ]) {
+      revert TestError();
+    } catch {
+      // We want an error since the balance has been manipulated
+    }
+
+    // Cannot provide a fake balance nonce
+    try wrapper.verifyProof([uint(0),0], [[uint(0),0],[uint(0),0]], [uint(0),0], [
+      publicKey,
+      wrapper.treeRoot(),
+      encryptedAmount,
+      ephemeralKey,
+      finalBalance,
+      receiveNullifier,
+      ogBalance,
+      100,
+      newBalanceNonce,
+      0 // not a burn
+    ]) {
+      revert TestError();
+    } catch {
+      // We want an error since the balance nonce has been manipulated
+    }
 
     // Send to second account
     wrapper.verifyProof([uint(0),0], [[uint(0),0],[uint(0),0]], [uint(0),0], [
