@@ -9,11 +9,21 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 import {formatUnits} from 'viem';
+import { poseidon2 } from "poseidon-lite";
+import { groth16 } from 'snarkjs';
 
 import erc20Abi from '../abi/MockERC20.json';
 import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
-import {randomBigInt} from '../utils.js';
+import {
+  elgamalDecrypt,
+  elgamalDecode,
+  poseidonDecrypt,
+  genTree,
+  getCalldata,
+  pubKey,
+  randomBigInt,
+} from '../utils.js';
 
 export default function MintPrivate({ amount, recipPubKey }) {
   const { address } = useAccount();
@@ -27,7 +37,8 @@ export default function MintPrivate({ amount, recipPubKey }) {
       },
     ],
   });
-  const { writeContract, isPending, isError, data } = useWriteContract();
+  const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
+  writeError && console.error(writeError);
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
   useEffect(() => {
     txSuccess && refetch();
@@ -48,15 +59,29 @@ export default function MintPrivate({ amount, recipPubKey }) {
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
-  function mint() {
-    const nonce = randomBigInt(252);
-    const params = {
+  async function mint() {
+    const sendNonce = randomBigInt(252);
+    const input = {
+      sendAmount: amount,
+      sendNonce,
+      recipPubKey,
+    };
+    const proof = await groth16.fullProve(
+      input,
+      '/circuits/mint/verify_circuit.wasm',
+      '/circuits/mint/groth16_pkey.zkey',
+    );
+    const args = getCalldata(proof);
+
+    writeContract({
       abi,
       address: byChain[defaultChain].PrivateToken,
       functionName: 'mint',
-      args: [ amount, recipPubKey, nonce ]
-    };
-    writeContract(params);
+      args,
+
+    });
+    toast.dismiss();
+    toast.success('Proof generated!');
     
   }
   

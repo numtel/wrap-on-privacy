@@ -16,6 +16,7 @@ contract PrivateToken is IPrivateToken {
   uint8 public reduceDecimals;
   IERC20 public wrappedToken;
   IVerifier public verifier;
+  IMintVerifier public mintVerifier;
 
   LeanIMTData sendTree;
   PrivateSend[] public encryptedSends;
@@ -24,10 +25,16 @@ contract PrivateToken is IPrivateToken {
   // keyed by receiveNullifier
   mapping(uint256 => bool) public receivedHashes;
 
-  constructor(address tokenToWrap, uint8 _reduceDecimals, address _verifier) {
+  constructor(address tokenToWrap, uint8 _reduceDecimals, address _verifier, address _mintVerifier) {
     wrappedToken = IERC20(tokenToWrap);
     reduceDecimals = _reduceDecimals;
     verifier = IVerifier(_verifier);
+    mintVerifier = IMintVerifier(_mintVerifier);
+
+    // Populate the tree with a single entry so proofs can be generated
+    uint256 receiveTxHash = PoseidonT3.hash([uint256(1), 1]);
+    encryptedSends.push(PrivateSend(1, 1));
+    sendTree._insert(receiveTxHash);
   }
 
   function sendCount() external view returns (uint256) {
@@ -38,22 +45,18 @@ contract PrivateToken is IPrivateToken {
     return sendTree._root();
   }
 
-  // TODO create a circuit to make mints private
-  function mint(uint256 amount, uint256 recipPubKey, uint256 nonce) external {
-    if(amount > MAX_SEND) {
-      revert PrivateToken__InvalidAmount();
+  function mint(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[3] calldata _pubSignals) external {
+    if(!mintVerifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
+      revert PrivateToken__InvalidProof();
     }
-    // ElGamal encrypt the new funds
-    uint256 encodedSecret = modExp(2, amount, SNARK_SCALAR_FIELD);
-    uint256 ephemeralKey = modExp(2, nonce, SNARK_SCALAR_FIELD);
-    uint256 maskingKey = modExp(recipPubKey, nonce, SNARK_SCALAR_FIELD);
-    uint256 encryptedAmount = modMul(encodedSecret, maskingKey, SNARK_SCALAR_FIELD);
 
+    uint256 ephemeralKey = _pubSignals[0];
+    uint256 encryptedAmount = _pubSignals[1];
     uint256 receiveTxHash = PoseidonT3.hash([encryptedAmount, ephemeralKey]);
     encryptedSends.push(PrivateSend(encryptedAmount, ephemeralKey));
     sendTree._insert(receiveTxHash);
 
-    wrappedToken.transferFrom(msg.sender, address(this), amount * (10 ** reduceDecimals));
+    wrappedToken.transferFrom(msg.sender, address(this), _pubSignals[2] * (10 ** reduceDecimals));
   }
 
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external {
@@ -120,41 +123,12 @@ contract PrivateToken is IPrivateToken {
     );
   }
 
-  // Modular exponentiation using the precompiled contract at address 0x05
-  function modExp(
-      uint256 base,
-      uint256 exponent,
-      uint256 modulus
-  ) public view returns (uint256 result) {
-      assembly {
-          let pointer := mload(0x40) // Free memory pointer
-          mstore(pointer, 0x20)     // Base length (32 bytes)
-          mstore(add(pointer, 0x20), 0x20) // Exponent length (32 bytes)
-          mstore(add(pointer, 0x40), 0x20) // Modulus length (32 bytes)
-          mstore(add(pointer, 0x60), base) // Base
-          mstore(add(pointer, 0x80), exponent) // Exponent
-          mstore(add(pointer, 0xa0), modulus) // Modulus
-          if iszero(staticcall(not(0), 0x05, pointer, 0xc0, pointer, 0x20)) {
-              revert(0, 0)
-          }
-          result := mload(pointer)
-      }
-  }
-
-  // Modular multiplication to prevent overflow
-  function modMul(
-      uint256 a,
-      uint256 b,
-      uint256 modulus
-  ) public pure returns (uint256 result) {
-      assembly {
-          let mm := mulmod(a, b, modulus)
-          result := mm
-      }
-  }
-
 }
 
 interface IVerifier {
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external view returns (bool);
+}
+
+interface IMintVerifier {
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[3] calldata _pubSignals) external view returns (bool);
 }

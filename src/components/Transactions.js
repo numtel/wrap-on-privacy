@@ -15,6 +15,7 @@ import { groth16 } from 'snarkjs';
 import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 import {
+  elgamalEncrypt,
   elgamalDecrypt,
   elgamalDecode,
   poseidonDecrypt,
@@ -23,10 +24,11 @@ import {
   pubKey,
   randomBigInt,
 } from '../utils.js';
+import MintPrivate from './MintPrivate.js';
 import SendPrivate from './SendPrivate.js';
 import BurnPrivate from './BurnPrivate.js';
 
-export default function Transactions({ privateKey }) {
+export default function Transactions({ privateKey, publicKey, mintAmount }) {
   const [myTx, setMyTx] = useState([]);
   const { data, isError, isLoading } = useReadContracts({
     contracts: [
@@ -45,18 +47,18 @@ export default function Transactions({ privateKey }) {
   });
   if(isError) return <p>Error loading send count!</p>;
   if(isLoading) return <p>Loading send count...</p>;
-  const balance = poseidonDecrypt(privateKey, data[1].result[1], data[1].result[0]);
+  const balance = data[1].result[0] === 0n ? 0n : poseidonDecrypt(privateKey, data[1].result[1], data[1].result[0]);
   return <>
     <p className="balance">
       <LockClosedIcon className="h-5 w-5 inline-block mr-3" />
       My private balance:
       <span>{(balance / 100n).toString()}</span>
     </p>
-    <FindMyTx {...{privateKey}} encryptedBalance={data[1].result[0]} balanceNonce={data[1].result[1]} sendCount={Number(data[0].result)} />
+    <FindMyTx {...{privateKey, publicKey, mintAmount}} encryptedBalance={data[1].result[0]} balanceNonce={data[1].result[1]} sendCount={Number(data[0].result)} />
   </>;
 }
 
-function FindMyTx({ sendCount, privateKey, encryptedBalance, balanceNonce }) {
+function FindMyTx({ sendCount, privateKey, publicKey, encryptedBalance, balanceNonce, mintAmount }) {
   const [filtered, setFiltered] = useState([]);
   // XXX fine for small pools
   const { data, isError, isLoading } = useReadContracts({
@@ -90,6 +92,7 @@ function FindMyTx({ sendCount, privateKey, encryptedBalance, balanceNonce }) {
   if(isLoading) return <p>Loading send amounts...</p>;
 
   return (<>
+    <MintPrivate amount={mintAmount} recipPubKey={publicKey} />
     <SendPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
     <BurnPrivate fullList={data} {...{privateKey, encryptedBalance, balanceNonce}} />
     <h2>Incoming Transactions</h2>
@@ -110,7 +113,7 @@ function MyTx({ amount, receiveNullifier, privateKey, fullList, index, encrypted
     <span className="amount">{amount/100}</span>&nbsp;
     {isLoading && <span>(Loading status...)</span>}
     {isError && <span>(Error loading status!)</span>}
-    {typeof data === 'boolean' && !data && <span class="controls">
+    {typeof data === 'boolean' && !data && <span className="controls">
       <ReceiveTx {...{amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce}} />
     </span>}
   </p>;
@@ -118,7 +121,9 @@ function MyTx({ amount, receiveNullifier, privateKey, fullList, index, encrypted
 
 function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encryptedBalance, balanceNonce }) {
   const [tree, setTree] = useState(null);
-  const { writeContract, isPending, isError, data } = useWriteContract();
+  const { writeContract, isPending, isError, data, error } = useWriteContract();
+  error && console.error(error);
+
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
   useEffect(() => {
     const newTree = genTree(fullList.map(x => poseidon2([x.result[0], x.result[1]])), index);
@@ -153,8 +158,8 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encr
       treeIndices: tree.treeIndices,
       treeSiblings: tree.treeSiblings,
       privateKey,
-      encryptedBalance: encryptedBalance === 0n ? poseidon2([ privateKey, firstBalanceNonce ]) : encryptedBalance,
-      balanceNonce: balanceNonce === 0n ? firstBalanceNonce : balanceNonce,
+      encryptedBalance,
+      balanceNonce,
       newBalanceNonce,
       sendAmount: 0,
       sendNonce,
@@ -166,9 +171,10 @@ function ReceiveTx({ amount, receiveNullifier, privateKey, fullList, index, encr
     };
     const proof = await groth16.fullProve(
       input,
-      '/verify_circuit.wasm',
-      '/groth16_pkey.zkey',
+      '/circuits/main/verify_circuit.wasm',
+      '/circuits/main/groth16_pkey.zkey',
     );
+    console.log(input, proof);
     const args = getCalldata(proof);
     writeContract({
       abi,

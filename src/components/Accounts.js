@@ -9,7 +9,6 @@ import {
   sigToKeyPair,
 } from '../utils.js';
 import Approve from './Approve.js';
-import MintPrivate from './MintPrivate.js';
 import Transactions from './Transactions.js';
 import CopyLink from './CopyLink.js';
 
@@ -47,8 +46,7 @@ export default function Accounts({ amount }) {
           <ArrowUpIcon className="h-5 w-5 inline-block" />
         </p>
         <Approve amount={amount} />
-        <MintPrivate amount={amount / (10n ** 16n)} recipPubKey={keypair.pub} />
-        <Transactions privateKey={keypair.priv} />
+        <Transactions mintAmount={amount / (10n ** 16n)} privateKey={keypair.priv} publicKey={keypair.pub} />
       </>}
     </>}
   </>);

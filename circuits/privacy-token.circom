@@ -22,10 +22,10 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   signal input treeDepth, treeIndices[MAX_DEPTH], treeSiblings[MAX_DEPTH];
   signal input sendAmount;
   signal input sendNonce;
+  // recipPubKey will be an ethereum address if isBurn=1
   signal input recipPubKey;
   signal input isBurn;
   signal input isReceiving;
-  // when the treeDepth=0 (it's a proof that doesn't receive), the valid tree root is passed here
   signal input nonReceivingTreeRoot;
 
   signal output publicKey;
@@ -37,7 +37,11 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
 
   publicKey <== Exponentiate()(2, privateKey);
 
-  var decryptedBalance = SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce);
+  var decryptedBalance = IfElse()(
+    IsZero()(encryptedBalance),
+    0,
+    SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce)
+  );
 
   var receiveTxHash = Poseidon(2)([encryptedAmountReceived, ephemeralKeyReceived]);
 
@@ -85,3 +89,22 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
 
 }
 
+template PrivateMint(MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
+  signal input sendAmount;
+  signal input sendNonce;
+  signal input recipPubKey;
+  signal output ephemeralKey;
+  signal output encryptedAmount;
+
+  component underMaxSendAmount = LessThan(MAX_AMOUNT_BITS);
+  underMaxSendAmount.in[0] <== MAX_SEND_AMOUNT;
+  underMaxSendAmount.in[1] <== sendAmount;
+  underMaxSendAmount.out === 0;
+
+  component sendEncrypter = AsymmetricEncrypt();
+  sendEncrypter.secret <== sendAmount;
+  sendEncrypter.publicKey <== recipPubKey;
+  sendEncrypter.nonce <== sendNonce;
+  ephemeralKey <== sendEncrypter.ephemeralKey;
+  encryptedAmount <== sendEncrypter.encryptedMessage;
+}

@@ -75,8 +75,8 @@ export default function SendPrivate({fullList, privateKey, encryptedBalance, bal
     console.log(input);
     const proof = await groth16.fullProve(
       input,
-      '/verify_circuit.wasm',
-      '/groth16_pkey.zkey',
+      '/circuits/main/verify_circuit.wasm',
+      '/circuits/main/groth16_pkey.zkey',
     );
     console.log(proof);
     const args = getCalldata(proof);

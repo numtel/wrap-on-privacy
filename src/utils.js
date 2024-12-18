@@ -65,7 +65,6 @@ export function randomBigInt(bits) {
 }
 
 export function genTree(items, proofIndex) {
-  console.log(items, proofIndex);
   const tree = new LeanIMT((a, b) => poseidon2([a, b]));
 
   items.forEach(item => tree.insert(item));

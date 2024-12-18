@@ -3,14 +3,17 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "todo": "bash -c \"grep -rn 'TODO' --exclude-dir={node_modules,build,cache,lib,out} --exclude={*.min*,*.swp,package.json,solc} *\"",
     "dev": "vite",
     "build:frontend": "vite build",
     "test:libraries": "mocha -t 50000",
     "test:contracts": "forge test",
     "test": "mocha -t 50000 && forge test",
     "compile:circuit": "circomkit compile privacytoken",
+    "compile:mint-circuit": "circomkit compile privatemint",
     "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
-    "deploy:contract": "VERIFIER_ADDRESS=0xda66ad5da2619054d890c359cb22601b104ac662 forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
+    "deploy:mint-circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privatemint.circom",
+    "deploy:contract": "VERIFIER_ADDRESS=0xe4d8a8c3e0a98ca7aa7ba775a52e48bc8c72a52a MINT_VERIFIER_ADDRESS=0x355d26cfecad96d84e71a8a16a9ba9358230d38e forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
     "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/"
   },
   "dependencies": {
@@ -25,13 +28,14 @@
     "@zk-kit/imt": "2.0.0-beta",
     "circomlib": "2.0.5",
     "ffjavascript": "0.2.62",
+    "ntru-circom": "0.0.5",
     "poseidon-lite": "0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
     "react-hot-toast": "^2.4.1",
     "snarkjs": "0.7.5",
-    "viem": "2.19.4",
+    "viem": "2.21.55",
     "wagmi": "^2.12.5"
   },
   "devDependencies": {

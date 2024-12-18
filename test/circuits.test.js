@@ -10,7 +10,12 @@ const BASE = F.e(2);
 const circomkit = new Circomkit({
   "verbose": false,
   "inspect": true,
-  "include": ["node_modules/circomlib/circuits", "node_modules/@zk-kit/circuits/circom"],
+  "include": [
+    "node_modules",
+    "node_modules/circomlib/circuits",
+    "node_modules/@zk-kit/circuits/circom",
+    "node_modules/ntru-circom/circuits",
+  ],
 });
 
 const MAX_DEPTH = 32n;
@@ -69,6 +74,29 @@ describe("privacy-token", () => {
       sendEphemeralKey,
       finalBalance,
       receiveNullifier,
+    });
+  });
+
+  it("verifies a mint", async () => {
+    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
+    const publicKey = F.pow(BASE, privateKey);
+    const sendNonce = 456n;
+    const sendAmount = 223n;
+    const {encryptedMessage, ephemeralKey} = await asymmetricEncrypt(sendAmount, publicKey, sendNonce);
+
+    const circuit = await circomkit.WitnessTester(`privatemint`, {
+      file: "privacy-token",
+      template: "PrivateMint",
+      dir: "test/privacy-token",
+      params: [MAX_AMOUNT_BITS, MAX_SEND_AMOUNT],
+    });
+    await circuit.expectPass({
+      sendAmount,
+      sendNonce,
+      recipPubKey: publicKey,
+    }, {
+      encryptedAmount: encryptedMessage,
+      ephemeralKey,
     });
   });
 
