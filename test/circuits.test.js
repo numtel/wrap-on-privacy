@@ -2,13 +2,14 @@ import { Circomkit } from "circomkit";
 import { LeanIMT } from "@zk-kit/imt";
 import { poseidon2 } from "poseidon-lite";
 import {Scalar, ZqField} from "ffjavascript";
+import NTRU, {expandArray, trimPolynomial} from "ntru-circom";
 
 const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
 const F = new ZqField(Scalar.fromString(SNARK_FIELD_SIZE.toString()));
 const BASE = F.e(2);
 
 const circomkit = new Circomkit({
-  "verbose": false,
+  "verbose": process.env.VERBOSE,
   "inspect": true,
   "include": [
     "node_modules",
@@ -18,42 +19,156 @@ const circomkit = new Circomkit({
   ],
 });
 
+const ntru = new NTRU({
+//       N: 701,
+//       q: 8192,
+//       df: Math.floor(701/3),
+//       dg: Math.floor(701/3),
+//       dr: Math.floor(701/3),
+//       N: 509,
+//       q: 2048,
+//       df: Math.floor(509/3),
+//       dg: Math.floor(509/3),
+//       dr: Math.floor(509/3),
+  // very small keys, not secure, but fast
+  N: 17,
+  q: 32,
+  df: 3,
+  dg: 2,
+  dr: 2,
+});
+ntru.generatePrivateKeyF();
+ntru.generateNewPublicKeyGH();
+
 const MAX_DEPTH = 32n;
 const MAX_AMOUNT_BITS = 252n;
-const MAX_SEND_AMOUNT = 2n ** 19n;
+const MAX_SEND_AMOUNT = 2n ** BigInt(Math.min(252, ntru.N));
+
+function bigintToBits(bigint) {
+  const bits = [];
+  // While the number is not zero, extract the least significant bit (LSB) and shift right
+  while (bigint > 0n) {
+      bits.push(Number(bigint & 1n)); // Get the LSB (0 or 1)
+      bigint >>= 1n; // Shift right by 1 bit
+  }
+  return bits;
+}
+
+function bitsToBigInt(bits) {
+  return BigInt(`0b${bits.join('')}`);
+}
+
+function packOutput(maxVal, dataLen, data) {
+  const maxInputBits = Math.log2(maxVal);
+  const numInputsPerOutput = Math.floor(252/maxInputBits);
+  const arrLen = Math.max(
+    Math.ceil(dataLen / numInputsPerOutput) * numInputsPerOutput,
+    numInputsPerOutput * 3, // need min of 3 output field elements
+  );
+  const maxOutputBits = numInputsPerOutput * maxInputBits;
+  const outputSize = Math.max(Math.ceil(arrLen / numInputsPerOutput), 3); // need min of 3 for burn details
+  const inArr = expandArray(data, arrLen, 0);
+  const expected = inArr.reduce((out, cur, i) => {
+    const outIdx = Math.floor(i/numInputsPerOutput);
+    out[outIdx] += BigInt(cur) * BigInt(2 ** ((i % numInputsPerOutput) * maxInputBits));
+    return out;
+  }, new Array(outputSize).fill(0n));
+  const inputSize = (outputSize * numInputsPerOutput) / maxInputBits;
+  return {
+    maxInputBits,
+    maxOutputBits,
+    outputSize,
+    arrLen,
+    expected,
+  }
+}
+
+function unpackInput(maxVal, packedBits, data) {
+  const maxInputBits = Math.log2(maxVal);
+  const numInputsPerOutput = packedBits/maxInputBits;
+  const unpackedSize = numInputsPerOutput * data.length;
+  const mask = (1n << BigInt(maxInputBits)) - 1n;
+  const unpacked = trimPolynomial(data.reduce((out, cur, i) => {
+    for(let j = 0; j < numInputsPerOutput; j++) {
+      const shift = BigInt(j * maxInputBits);
+      const chunk = (cur >> shift) & mask;
+      out[i * numInputsPerOutput + j] = Number(chunk);
+    }
+    return out;
+  }, new Array(unpackedSize).fill(0)));
+
+  return {
+    maxInputBits,
+    packedBits,
+    packedSize: data.length,
+    unpackedSize,
+    unpacked,
+  };
+}
+
+function calcTxHash(receivePacked) {
+  let receiveTxHash = poseidon2([receivePacked.expected[0], receivePacked.expected[1]]);
+  for(let i = 2; i<receivePacked.expected.length; i++) {
+    receiveTxHash = poseidon2([receiveTxHash, receivePacked.expected[i]]);
+  }
+  return receiveTxHash;
+}
 
 describe("privacy-token", () => {
   it("verifies a send/receive (both)", async () => {
     const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
     const publicKey = F.pow(BASE, privateKey);
-    const encAmount1 = 123n;
-    const ephemKey1 = 234n;
-    const sendAmount2Nonce = 456n;
-    const sendAmount2 = 223n;
-    const {encryptedMessage: encAmount2, ephemeralKey: ephemKey2} = await asymmetricEncrypt(sendAmount2, publicKey, sendAmount2Nonce);
+
+    const receiveAmount = 223n;
+    const receiveEncrypted = ntru.encryptBits(bigintToBits(receiveAmount));
+    const receivePacked = packOutput(ntru.q, ntru.N+1, receiveEncrypted.inputs.remainderE);
+    const receiveDecrypted = ntru.decryptBits(receiveEncrypted.value);
+    const receiveTxHash = calcTxHash(receivePacked);
+    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+
     const balance = 987n;
     const balanceNonce = 1234n;
     const newBalanceNonce = 1235n;
     const encryptedBalance = await symmetricEncrypt(balance, privateKey, balanceNonce);
-    const sendAmount = balance + sendAmount2 - 1n;
-    const sendNonce = 2345n;
-    const recipPrivateKey = 0x20644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
-    const recipPubKey = F.pow(BASE, recipPrivateKey);
-    const {encryptedMessage: encryptedAmountSent, ephemeralKey: sendEphemeralKey} = await asymmetricEncrypt(sendAmount, recipPubKey, sendNonce);
-    const receiveTxHash = poseidon2([encAmount2, ephemKey2]);
-    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
-    const finalBalance = await symmetricEncrypt(balance + sendAmount2 - sendAmount, privateKey, newBalanceNonce);
+    const sendAmount = balance + receiveAmount - 1n;
+    const finalBalance = await symmetricEncrypt(balance + receiveAmount - sendAmount, privateKey, newBalanceNonce);
+
+    const sendEncrypted = ntru.encryptBits(bigintToBits(sendAmount));
+    const sendPacked = packOutput(ntru.q, ntru.N+1, sendEncrypted.inputs.remainderE);
+    const sendUnpacked = unpackInput(ntru.q, sendPacked.maxOutputBits, sendPacked.expected);
 
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
-      poseidon2([ encAmount1, ephemKey1 ]),
-      poseidon2([ encAmount2, ephemKey2 ]),
+      poseidon2([ 123n, 456n ]), // first item doesn't matter
+      receiveTxHash, // genTree uses this second item
     ]);
 
-    const circuit = await privacyToken();
+    const circuit = await circomkit.WitnessTester(`privacytoken`, {
+      file: "privacy-token",
+      template: "PrivacyToken",
+      dir: "test/privacy-token",
+      params: [
+        MAX_DEPTH,
+        MAX_AMOUNT_BITS,
+        MAX_SEND_AMOUNT,
+        ntru.q,
+        ntru.calculateNq(),
+        ntru.p,
+        ntru.calculateNp(),
+        ntru.N,
+        sendPacked.maxInputBits,
+        sendPacked.maxOutputBits,
+        sendPacked.outputSize,
+        sendPacked.arrLen,
+      ],
+    });
     await circuit.expectPass({
-      encryptedAmountReceived: encAmount2,
-      ephemeralKeyReceived: ephemKey2,
-      decodedAmountReceived: sendAmount2,
+      encryptedReceive: receivePacked.expected,
+      f: receiveDecrypted.inputs.f,
+      fp: receiveDecrypted.inputs.fp,
+      receiveQuotient1: receiveDecrypted.inputs.quotient1,
+      receiveRemainder1: receiveDecrypted.inputs.remainder1,
+      receiveQuotient2: receiveDecrypted.inputs.quotient2,
+      receiveRemainder2: receiveDecrypted.inputs.remainder2,
       treeDepth,
       treeIndices,
       treeSiblings,
@@ -62,41 +177,55 @@ describe("privacy-token", () => {
       balanceNonce,
       newBalanceNonce,
       sendAmount,
-      sendNonce,
-      recipPubKey,
+      recipH: sendEncrypted.inputs.h,
+      sendR: sendEncrypted.inputs.r,
+      sendQuotient: sendEncrypted.inputs.quotientE,
+      sendRemainder: sendEncrypted.inputs.remainderE,
+      recipPubKey: 0,
       isBurn: 0,
       isReceiving: 1,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
     }, {
+      publicKey,
+      txHash: receiveTxHash,
       treeRoot,
-      encryptedAmountSent,
-      sendEphemeralKey,
+      encryptedAmountSent: sendPacked.expected,
       finalBalance,
       receiveNullifier,
     });
   });
 
   it("verifies a mint", async () => {
-    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
-    const publicKey = F.pow(BASE, privateKey);
-    const sendNonce = 456n;
-    const sendAmount = 223n;
-    const {encryptedMessage, ephemeralKey} = await asymmetricEncrypt(sendAmount, publicKey, sendNonce);
+    const sendAmount = MAX_SEND_AMOUNT - 3n;
+    const encrypted = ntru.encryptBits(bigintToBits(sendAmount));
+    const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
 
     const circuit = await circomkit.WitnessTester(`privatemint`, {
       file: "privacy-token",
       template: "PrivateMint",
       dir: "test/privacy-token",
-      params: [MAX_AMOUNT_BITS, MAX_SEND_AMOUNT],
+      params: [
+        MAX_AMOUNT_BITS,
+        MAX_SEND_AMOUNT,
+        ntru.q,
+        ntru.calculateNq(),
+        ntru.N,
+        sendPacked.maxInputBits,
+        sendPacked.maxOutputBits,
+        sendPacked.outputSize,
+        sendPacked.arrLen,
+      ],
     });
-    await circuit.expectPass({
+    const inputs = {
       sendAmount,
-      sendNonce,
-      recipPubKey: publicKey,
-    }, {
-      encryptedAmount: encryptedMessage,
-      ephemeralKey,
+      recipH: encrypted.inputs.h,
+      sendR: encrypted.inputs.r,
+      quotientE: encrypted.inputs.quotientE,
+      remainderE: encrypted.inputs.remainderE,
+    };
+    await circuit.expectPass(inputs, {
+      encryptedSend: sendPacked.expected,
     });
   });
 
@@ -367,29 +496,6 @@ describe("privacy-token", () => {
 //     console.log(JSON.stringify(input, null, 2));
 //     console.log(JSON.stringify(output, null, 2));
     await circuit.expectPass(input, output);
-  });
-});
-
-describe("encryption-asymmetric", () => {
-  it("encrypt-decrypt", async () => {
-    const circuitDecrypt = await circomkit.WitnessTester(`asymmetricdecrypt`, {
-      file: "encryption-asymmetric",
-      template: "AsymmetricDecrypt",
-      dir: "test/encryption-asymmetric",
-    });
-
-    const secret = 123456n;
-    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
-    const publicKey = F.pow(BASE, privateKey);
-    const nonce = 34567n;
-
-    // Can encrypt and decrypt back to the same value
-    const {encryptedMessage, ephemeralKey} = await asymmetricEncrypt(secret, publicKey, nonce);
-    await circuitDecrypt.expectPass(
-      { encryptedMessage, ephemeralKey, privateKey },
-      // decrypted value is encoded
-      { decryptedMessage: F.pow(BASE, secret) }
-    );
   });
 });
 

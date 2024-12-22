@@ -5,24 +5,34 @@ include "gates.circom";
 include "poseidon.circom";
 include "comparators.circom";
 include "binary-merkle-root.circom";
+include "ntru.circom";
 
 include "control-flow.circom";
 include "exponentiate.circom";
 include "encryption-symmetric.circom";
-include "encryption-asymmetric.circom";
 
-template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
+template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np, N, log2q, outPartBits, nO, packLen) {
   signal input privateKey;
   signal input encryptedBalance;
   signal input balanceNonce;
   signal input newBalanceNonce;
-  signal input decodedAmountReceived;
-  signal input encryptedAmountReceived;
-  signal input ephemeralKeyReceived;
+
+  signal input encryptedReceive[nO];
+  signal input f[N];
+  signal input fp[N];
+  signal input receiveQuotient1[N+1];
+  signal input receiveRemainder1[N+1];
+  signal input receiveQuotient2[N+1];
+  signal input receiveRemainder2[N+1];
+
   signal input treeDepth, treeIndices[MAX_DEPTH], treeSiblings[MAX_DEPTH];
   signal input sendAmount;
-  signal input sendNonce;
+  signal input recipH[N];
+  signal input sendR[N];
+  signal input sendQuotient[N+1];
+  signal input sendRemainder[N+1];
   // recipPubKey will be an ethereum address if isBurn=1
+  // TODO rename to burnAddress
   signal input recipPubKey;
   signal input isBurn;
   signal input isReceiving;
@@ -30,8 +40,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
 
   signal output publicKey;
   signal output treeRoot;
-  signal output encryptedAmountSent;
-  signal output sendEphemeralKey;
+  signal output encryptedAmountSent[nO];
   signal output finalBalance;
   signal output receiveNullifier;
 
@@ -43,16 +52,39 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
     SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce)
   );
 
-  var receiveTxHash = Poseidon(2)([encryptedAmountReceived, ephemeralKeyReceived]);
+  var receiveTxHash[nO-1];
+  receiveTxHash[0] = Poseidon(2)([encryptedReceive[0], encryptedReceive[1]]);
+  for(var i = 2; i<nO; i++) {
+    receiveTxHash[i-1] = Poseidon(2)([receiveTxHash[i-2], encryptedReceive[i]]);
+  }
+  signal output txHash;
+  txHash <== receiveTxHash[nO-2];
 
-  var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash, treeDepth, treeIndices, treeSiblings);
+  var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash[nO-2], treeDepth, treeIndices, treeSiblings);
   treeRoot <== IfElse()(isReceiving, calcTreeRoot, nonReceivingTreeRoot);
 
-  var decryptedAmountReceived = AsymmetricDecrypt()(privateKey, ephemeralKeyReceived, encryptedAmountReceived);
-  var checkDecryptedAmountReceived = Exponentiate()(2, decodedAmountReceived);
-  decryptedAmountReceived === checkDecryptedAmountReceived;
+  // TODO don't forget to verify f matches fp
+  var receiveUnpacked[packLen] = UnpackArray(log2q, outPartBits, nO, packLen)(encryptedReceive);
+  component receiveDecrypted = VerifyDecrypt(q, nq, p, np, N);
+  receiveDecrypted.f <== f;
+  receiveDecrypted.fp <== fp;
+  for(var i = 0; i < N; i++) {
+    receiveDecrypted.e[i] <== receiveUnpacked[i];
+  }
+  receiveDecrypted.quotient1 <== receiveQuotient1;
+  receiveDecrypted.remainder1 <== receiveRemainder1;
+  receiveDecrypted.quotient2 <== receiveQuotient2;
+  receiveDecrypted.remainder2 <== receiveRemainder2;
 
-  var newBalanceIfReceiving = decryptedBalance + decodedAmountReceived;
+  var amountReceivedBits[MAX_AMOUNT_BITS];
+  for(var i = 0; i<N; i++) {
+    if(i < MAX_AMOUNT_BITS) {
+      amountReceivedBits[i] = receiveRemainder2[i];
+    }
+  }
+  var amountReceived = Bits2Num(MAX_AMOUNT_BITS)(amountReceivedBits);
+
+  var newBalanceIfReceiving = decryptedBalance + amountReceived;
   var newBalanceRaw = IfElse()(isReceiving, newBalanceIfReceiving, decryptedBalance);
 
   component validSendAmount = LessThan(MAX_AMOUNT_BITS);
@@ -65,21 +97,37 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
   underMaxSendAmount.in[1] <== sendAmount;
   underMaxSendAmount.out === 0;
 
-  component sendEncrypter = AsymmetricEncrypt();
-  sendEncrypter.secret <== sendAmount;
-  sendEncrypter.publicKey <== recipPubKey;
-  sendEncrypter.nonce <== sendNonce;
-  var ephemKeyIfNotBurn = sendEncrypter.ephemeralKey;
-  var encAmtSentIfNotBurn = sendEncrypter.encryptedMessage;
+  var sendM[N] = Num2Bits(N)(sendAmount);
 
-  encryptedAmountSent <== IfElse()(isBurn, sendAmount, encAmtSentIfNotBurn);
-  // Output recip address if it's a burn as the ephemeral key
-  sendEphemeralKey <== IfElse()(isBurn, recipPubKey, ephemKeyIfNotBurn);
+  component sendEncrypted = VerifyEncrypt(q, nq, N);
+  sendEncrypted.r <== sendR;
+  sendEncrypted.m <== sendM;
+  sendEncrypted.h <== recipH;
+  sendEncrypted.quotientE <== sendQuotient;
+  sendEncrypted.remainderE <== sendRemainder;
+
+  component packOutput = CombineArray(log2q, outPartBits, packLen);
+  for(var i = 0; i<N; i++) {
+    packOutput.in[i] <== sendRemainder[i];
+  }
+  for(var i = N; i < packLen; i++) {
+    packOutput.in[i] <== 0;
+  }
+  var encAmountSentIfNotBurn[nO] = packOutput.out;
+
+  var encAmountSentIfBurn[nO];
+  encAmountSentIfBurn[0] = 1;
+  encAmountSentIfBurn[1] = sendAmount;
+  encAmountSentIfBurn[2] = recipPubKey;
+
+  for(var i = 0; i < nO; i++) {
+    encryptedAmountSent[i] <== IfElse()(isBurn, encAmountSentIfBurn[i], encAmountSentIfNotBurn[i]);
+  }
 
   var finalBalanceRaw = newBalanceRaw - sendAmount;
   finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);
 
-  receiveNullifier <== Poseidon(2)([ receiveTxHash, privateKey ]);
+  receiveNullifier <== Poseidon(2)([ receiveTxHash[nO-2], privateKey ]);
 
   // A proof must at least send or receive, it can't be a no-op spamming the tree
   component notNoop = AND();
@@ -89,22 +137,35 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
 
 }
 
-template PrivateMint(MAX_AMOUNT_BITS, MAX_SEND_AMOUNT) {
+template PrivateMint(MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, N, log2q, outPartBits, nO, packLen) {
   signal input sendAmount;
-  signal input sendNonce;
-  signal input recipPubKey;
-  signal output ephemeralKey;
-  signal output encryptedAmount;
+  signal input recipH[N];
+  signal input sendR[N];
+  signal input quotientE[N+1];
+  signal input remainderE[N+1];
+
+  signal output encryptedSend[nO];
+
+  var sendM[N] = Num2Bits(N)(sendAmount);
+
+  component sendEncrypted = VerifyEncrypt(q, nq, N);
+  sendEncrypted.r <== sendR;
+  sendEncrypted.m <== sendM;
+  sendEncrypted.h <== recipH;
+  sendEncrypted.quotientE <== quotientE;
+  sendEncrypted.remainderE <== remainderE;
 
   component underMaxSendAmount = LessThan(MAX_AMOUNT_BITS);
   underMaxSendAmount.in[0] <== MAX_SEND_AMOUNT;
   underMaxSendAmount.in[1] <== sendAmount;
   underMaxSendAmount.out === 0;
 
-  component sendEncrypter = AsymmetricEncrypt();
-  sendEncrypter.secret <== sendAmount;
-  sendEncrypter.publicKey <== recipPubKey;
-  sendEncrypter.nonce <== sendNonce;
-  ephemeralKey <== sendEncrypter.ephemeralKey;
-  encryptedAmount <== sendEncrypter.encryptedMessage;
+  component packOutput = CombineArray(log2q, outPartBits, packLen);
+  for(var i = 0; i<N; i++) {
+    packOutput.in[i] <== remainderE[i];
+  }
+  for(var i = N; i < packLen; i++) {
+    packOutput.in[i] <== 0;
+  }
+  encryptedSend <== packOutput.out;
 }
