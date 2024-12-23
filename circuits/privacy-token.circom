@@ -20,6 +20,8 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
   signal input encryptedReceive[nO];
   signal input f[N];
   signal input fp[N];
+  signal input quotientFp[N+1];
+  signal input remainderFp[N+1];
   signal input receiveQuotient1[N+1];
   signal input receiveRemainder1[N+1];
   signal input receiveQuotient2[N+1];
@@ -63,7 +65,21 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
   var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash[nO-2], treeDepth, treeIndices, treeSiblings);
   treeRoot <== IfElse()(isReceiving, calcTreeRoot, nonReceivingTreeRoot);
 
-  // TODO don't forget to verify f matches fp
+  // Input f uses a mod q while verifying fp needs mod p
+  var fModP[N];
+  // Remainder will be single 1
+  remainderFp[0] === 1;
+  for(var i = 0; i<N; i++) {
+    // p is always 3 so the hardcoded 2s are fine
+    fModP[i] = IfElse()(LessThan(nq)([f[i], 2]), f[i], 2);
+    if(i>0) {
+      remainderFp[i] === 0;
+    }
+  }
+  remainderFp[N] === 0;
+
+  VerifyInverse(p, np, N)(fModP, fp, quotientFp, remainderFp);
+
   var receiveUnpacked[packLen] = UnpackArray(log2q, outPartBits, nO, packLen)(encryptedReceive);
   component receiveDecrypted = VerifyDecrypt(q, nq, p, np, N);
   receiveDecrypted.f <== f;

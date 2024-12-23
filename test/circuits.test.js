@@ -137,6 +137,8 @@ describe("privacy-token", () => {
     const sendPacked = packOutput(ntru.q, ntru.N+1, sendEncrypted.inputs.remainderE);
     const sendUnpacked = unpackInput(ntru.q, sendPacked.maxOutputBits, sendPacked.expected);
 
+    const verifyKeys = ntru.verifyKeysInputs();
+
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
       poseidon2([ 123n, 456n ]), // first item doesn't matter
       receiveTxHash, // genTree uses this second item
@@ -161,10 +163,12 @@ describe("privacy-token", () => {
         sendPacked.arrLen,
       ],
     });
-    await circuit.expectPass({
+    const input = {
       encryptedReceive: receivePacked.expected,
       f: receiveDecrypted.inputs.f,
       fp: receiveDecrypted.inputs.fp,
+      quotientFp: verifyKeys.fp.inputs.quotientI,
+      remainderFp: verifyKeys.fp.inputs.remainderI,
       receiveQuotient1: receiveDecrypted.inputs.quotient1,
       receiveRemainder1: receiveDecrypted.inputs.remainder1,
       receiveQuotient2: receiveDecrypted.inputs.quotient2,
@@ -186,7 +190,8 @@ describe("privacy-token", () => {
       isReceiving: 1,
       // This value will not be output in this test case because it is receiving
       nonReceivingTreeRoot: 0n,
-    }, {
+    };
+    await circuit.expectPass(input, {
       publicKey,
       txHash: receiveTxHash,
       treeRoot,
