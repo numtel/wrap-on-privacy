@@ -106,25 +106,28 @@ function unpackInput(maxVal, packedBits, data) {
   };
 }
 
-function calcTxHash(receivePacked) {
-  let receiveTxHash = poseidon2([receivePacked.expected[0], receivePacked.expected[1]]);
-  for(let i = 2; i<receivePacked.expected.length; i++) {
-    receiveTxHash = poseidon2([receiveTxHash, receivePacked.expected[i]]);
+function calcMultiHash(input) {
+  let hash = poseidon2([input[0], input[1]]);
+  for(let i = 2; i<input.length; i++) {
+    hash = poseidon2([hash, input[i]]);
   }
-  return receiveTxHash;
+  return hash;
 }
 
 describe("privacy-token", () => {
   it("verifies a send/receive (both)", async () => {
-    const privateKey = 0x10644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
-    const publicKey = F.pow(BASE, privateKey);
-
     const receiveAmount = 223n;
     const receiveEncrypted = ntru.encryptBits(bigintToBits(receiveAmount));
     const receivePacked = packOutput(ntru.q, ntru.N+1, receiveEncrypted.inputs.remainderE);
     const receiveDecrypted = ntru.decryptBits(receiveEncrypted.value);
-    const receiveTxHash = calcTxHash(receivePacked);
+    const receiveTxHash = calcMultiHash(receivePacked.expected);
+
+    // privkey for balance symmetric encryption is packed+summed f
+    const privKeyPacked = packOutput(4, ntru.N, receiveDecrypted.inputs.f.map(x=>x===ntru.q-1 ? 2 : x));
+    const privateKey = privKeyPacked.expected.reduce((sum, cur) => sum + cur, 0n) % SNARK_FIELD_SIZE;
     const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
+    // pubkey for encrypted balance storage is hash of the packed f
+    const publicKey = calcMultiHash(privKeyPacked.expected);
 
     const balance = 987n;
     const balanceNonce = 1234n;
@@ -161,6 +164,7 @@ describe("privacy-token", () => {
         sendPacked.maxOutputBits,
         sendPacked.outputSize,
         sendPacked.arrLen,
+        privKeyPacked.outputSize,
       ],
     });
     const input = {
@@ -176,7 +180,6 @@ describe("privacy-token", () => {
       treeDepth,
       treeIndices,
       treeSiblings,
-      privateKey,
       encryptedBalance,
       balanceNonce,
       newBalanceNonce,
@@ -193,7 +196,6 @@ describe("privacy-token", () => {
     };
     await circuit.expectPass(input, {
       publicKey,
-      txHash: receiveTxHash,
       treeRoot,
       encryptedAmountSent: sendPacked.expected,
       finalBalance,

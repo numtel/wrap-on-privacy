@@ -8,11 +8,23 @@ include "binary-merkle-root.circom";
 include "ntru.circom";
 
 include "control-flow.circom";
-include "exponentiate.circom";
 include "encryption-symmetric.circom";
 
-template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np, N, log2q, outPartBits, nO, packLen) {
-  signal input privateKey;
+template PrivacyToken(
+  MAX_DEPTH,
+  MAX_AMOUNT_BITS,
+  MAX_SEND_AMOUNT,
+  q,
+  nq,
+  p,
+  np,
+  N,
+  log2q,
+  outPartBits,
+  nO,
+  packLen,
+  privKeySize
+) {
   signal input encryptedBalance;
   signal input balanceNonce;
   signal input newBalanceNonce;
@@ -46,24 +58,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
   signal output finalBalance;
   signal output receiveNullifier;
 
-  publicKey <== Exponentiate()(2, privateKey);
-
-  var decryptedBalance = IfElse()(
-    IsZero()(encryptedBalance),
-    0,
-    SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce)
-  );
-
-  var receiveTxHash[nO-1];
-  receiveTxHash[0] = Poseidon(2)([encryptedReceive[0], encryptedReceive[1]]);
-  for(var i = 2; i<nO; i++) {
-    receiveTxHash[i-1] = Poseidon(2)([receiveTxHash[i-2], encryptedReceive[i]]);
-  }
-  signal output txHash;
-  txHash <== receiveTxHash[nO-2];
-
-  var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash[nO-2], treeDepth, treeIndices, treeSiblings);
-  treeRoot <== IfElse()(isReceiving, calcTreeRoot, nonReceivingTreeRoot);
+  // Step 1: Verify private key coherency
 
   // Input f uses a mod q while verifying fp needs mod p
   var fModP[N];
@@ -80,6 +75,45 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
 
   VerifyInverse(p, np, N)(fModP, fp, quotientFp, remainderFp);
 
+
+  // Step 2: Generate derivative of NTRU private key to use in poseidon encryption for balance
+  var fModPLen126[privKeySize * 126];
+  for(var i = 0; i<N; i++) {
+    fModPLen126[i] = fModP[i];
+  }
+
+  var packedF[privKeySize] = CombineArray(2, 252, privKeySize * 126)(fModPLen126);
+  var privateKey = Sum(privKeySize)(packedF);
+
+  // Calculate the key hash to use for storing the balance
+  var keyHash[privKeySize-1];
+  keyHash[0] = Poseidon(2)([packedF[0], packedF[1]]);
+  for(var i = 2; i<privKeySize; i++) {
+    keyHash[i-1] = Poseidon(2)([keyHash[i-2], packedF[i]]);
+  }
+  publicKey <== keyHash[privKeySize-2];
+
+
+  // Decrypt balance unless this account has not yet initialized a balance
+  var decryptedBalance = IfElse()(
+    IsZero()(encryptedBalance),
+    0,
+    SymmetricDecrypt()(encryptedBalance, privateKey, balanceNonce)
+  );
+
+  // Step 3: Ensure this incoming transaction is part of the set of all transactions
+
+  // Calculate the hash of the incoming tx
+  var receiveTxHash[nO-1];
+  receiveTxHash[0] = Poseidon(2)([encryptedReceive[0], encryptedReceive[1]]);
+  for(var i = 2; i<nO; i++) {
+    receiveTxHash[i-1] = Poseidon(2)([receiveTxHash[i-2], encryptedReceive[i]]);
+  }
+
+  var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(receiveTxHash[nO-2], treeDepth, treeIndices, treeSiblings);
+  treeRoot <== IfElse()(isReceiving, calcTreeRoot, nonReceivingTreeRoot);
+
+  // Decrypt the incoming tx
   var receiveUnpacked[packLen] = UnpackArray(log2q, outPartBits, nO, packLen)(encryptedReceive);
   component receiveDecrypted = VerifyDecrypt(q, nq, p, np, N);
   receiveDecrypted.f <== f;
@@ -103,6 +137,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
   var newBalanceIfReceiving = decryptedBalance + amountReceived;
   var newBalanceRaw = IfElse()(isReceiving, newBalanceIfReceiving, decryptedBalance);
 
+  // Step 4: Prepare outgoing transaction
   component validSendAmount = LessThan(MAX_AMOUNT_BITS);
   validSendAmount.in[0] <== newBalanceRaw;
   validSendAmount.in[1] <== sendAmount;
@@ -131,6 +166,7 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
   }
   var encAmountSentIfNotBurn[nO] = packOutput.out;
 
+  // Optionally, burns will have their outgoing transaction data public
   var encAmountSentIfBurn[nO];
   encAmountSentIfBurn[0] = 1;
   encAmountSentIfBurn[1] = sendAmount;
@@ -140,9 +176,11 @@ template PrivacyToken(MAX_DEPTH, MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, p, np,
     encryptedAmountSent[i] <== IfElse()(isBurn, encAmountSentIfBurn[i], encAmountSentIfNotBurn[i]);
   }
 
+  // Store the final balance after input and output
   var finalBalanceRaw = newBalanceRaw - sendAmount;
   finalBalance <== SymmetricEncrypt()(finalBalanceRaw, privateKey, newBalanceNonce);
 
+  // Don't allow this account to process the same incoming transaction twice
   receiveNullifier <== Poseidon(2)([ receiveTxHash[nO-2], privateKey ]);
 
   // A proof must at least send or receive, it can't be a no-op spamming the tree
