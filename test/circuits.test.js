@@ -551,13 +551,7 @@ async function asymmetricEncrypt(secret, publicKey, nonce) {
 }
 
 async function symmetricEncrypt(message, key, nonce) {
-  const circuitEncrypt = await circomkit.WitnessTester(`symmetricencrypt`, {
-    file: "encryption-symmetric",
-    template: "SymmetricEncrypt",
-    dir: "test/encryption-symmetric",
-  });
-  const {encryptedMessage} = await circuitEncrypt.compute({message, key, nonce}, ['encryptedMessage']);
-  return encryptedMessage;
+  return poseidon2([key, nonce]) + message;
 }
 
 describe("encryption-symmetric", () => {
