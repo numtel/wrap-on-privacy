@@ -188,7 +188,7 @@ describe("privacy-token", () => {
       sendR: sendEncrypted.inputs.r,
       sendQuotient: sendEncrypted.inputs.quotientE,
       sendRemainder: sendEncrypted.inputs.remainderE,
-      recipPubKey: 0,
+      burnAddress: 0,
       isBurn: 0,
       isReceiving: 1,
       // This value will not be output in this test case because it is receiving

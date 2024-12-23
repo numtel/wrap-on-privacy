@@ -45,9 +45,8 @@ template PrivacyToken(
   signal input sendR[N];
   signal input sendQuotient[N+1];
   signal input sendRemainder[N+1];
-  // recipPubKey will be an ethereum address if isBurn=1
-  // TODO rename to burnAddress
-  signal input recipPubKey;
+  // burnAddress will be an ethereum address if isBurn=1, otherwise unsed
+  signal input burnAddress;
   signal input isBurn;
   signal input isReceiving;
   signal input nonReceivingTreeRoot;
@@ -170,7 +169,7 @@ template PrivacyToken(
   var encAmountSentIfBurn[nO];
   encAmountSentIfBurn[0] = 1;
   encAmountSentIfBurn[1] = sendAmount;
-  encAmountSentIfBurn[2] = recipPubKey;
+  encAmountSentIfBurn[2] = burnAddress;
 
   for(var i = 0; i < nO; i++) {
     encryptedAmountSent[i] <== IfElse()(isBurn, encAmountSentIfBurn[i], encAmountSentIfNotBurn[i]);
