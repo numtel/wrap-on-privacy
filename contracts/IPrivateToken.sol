@@ -1,11 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// Adjust based on key size
+uint256 constant MAX_SEND = 131072;
+uint256 constant nO = 3;
+uint256 constant nPub = nO + 7;
+uint256 constant nPubMint = nO + 1;
+
 interface IPrivateToken {
-  struct PrivateSend {
-    uint256 encryptedAmount;
-    uint256 ephemeralKey;
-  }
 
   struct PrivateAccount {
     uint256 encryptedBalance;
@@ -15,14 +17,12 @@ interface IPrivateToken {
   struct PubSignals {
     uint256 publicKey;
     uint256 treeRoot;
-    uint256 encryptedAmountSent;
-    uint256 sendEphemeralKey;
     uint256 finalBalance;
     uint256 receiveNullifier;
+    uint256[nO] encryptedAmountSent;
     uint256 encryptedBalance;
     uint256 balanceNonce;
     uint256 newBalanceNonce;
-    uint256 isBurn;
   }
 
   error PrivateToken__InvalidProof();

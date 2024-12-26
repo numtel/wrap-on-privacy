@@ -53,9 +53,9 @@ template PrivacyToken(
 
   signal output publicKey;
   signal output treeRoot;
-  signal output encryptedAmountSent[nO];
   signal output finalBalance;
   signal output receiveNullifier;
+  signal output encryptedAmountSent[nO];
 
   // Step 1: Verify private key coherency
 

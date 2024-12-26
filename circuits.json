@@ -2,13 +2,19 @@
   "privacytoken": {
     "file": "circuits/privacy-token",
     "template": "PrivacyToken",
-    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce", "isBurn"],
-    "params": [32, 252, 524288]
+    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce"],
+    "params": [
+       32,  252,  131072,
+       32,   15,       3,
+        8,   17,       5,
+      250,    3,     150,
+        3
+    ]
   },
   "privatemint": {
     "file": "circuits/privacy-token",
     "template": "PrivateMint",
-    "pubs": ["sendAmount", "remainderE"],
-    "params": [252, 524288, 128, 22]
+    "pubs": ["sendAmount"],
+    "params": [252, 131072, 32, 15, 17, 5, 250, 3, 150]
   }
 }

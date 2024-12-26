@@ -10,16 +10,13 @@ import "./IPrivateToken.sol";
 contract PrivateToken is IPrivateToken {
   using InternalLeanIMT for LeanIMTData;
 
-  // For reasonable decoding times
-  uint256 public constant MAX_SEND = 524288; // 2**19
-
   uint8 public reduceDecimals;
   IERC20 public wrappedToken;
   IVerifier public verifier;
   IMintVerifier public mintVerifier;
 
   LeanIMTData sendTree;
-  PrivateSend[] public encryptedSends;
+  bytes[] public encryptedSends;
   // keyed by publicKey
   mapping(uint256 => PrivateAccount) public accounts;
   // keyed by receiveNullifier
@@ -33,8 +30,16 @@ contract PrivateToken is IPrivateToken {
 
     // Populate the tree with a single entry so proofs can be generated
     uint256 receiveTxHash = PoseidonT3.hash([uint256(1), 1]);
-    encryptedSends.push(PrivateSend(1, 1));
+    encryptedSends.push(abi.encodePacked(uint(1)));
     sendTree._insert(receiveTxHash);
+  }
+
+  function hashMulti(uint[nO] memory input) internal pure returns (uint256) {
+    uint hash = PoseidonT3.hash([input[0], input[1]]);
+    for(uint i = 2; i<nO; i++) {
+      hash = PoseidonT3.hash([hash, input[i]]);
+    }
+    return hash;
   }
 
   function sendCount() external view returns (uint256) {
@@ -45,21 +50,24 @@ contract PrivateToken is IPrivateToken {
     return sendTree._root();
   }
 
-  function mint(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[3] calldata _pubSignals) external {
+  function mint(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPubMint] calldata _pubSignals) external {
     if(!mintVerifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
       revert PrivateToken__InvalidProof();
     }
 
-    uint256 ephemeralKey = _pubSignals[0];
-    uint256 encryptedAmount = _pubSignals[1];
-    uint256 receiveTxHash = PoseidonT3.hash([encryptedAmount, ephemeralKey]);
-    encryptedSends.push(PrivateSend(encryptedAmount, ephemeralKey));
+    uint256[nO] memory encryptedSent;
+    for(uint i = 0; i<nO; i++) {
+      encryptedSent[i] = _pubSignals[i];
+    }
+
+    uint256 receiveTxHash = hashMulti(encryptedSent);
+    encryptedSends.push(abi.encodePacked(encryptedSent));
     sendTree._insert(receiveTxHash);
 
-    wrappedToken.transferFrom(msg.sender, address(this), _pubSignals[2] * (10 ** reduceDecimals));
+    wrappedToken.transferFrom(msg.sender, address(this), _pubSignals[nPubMint-1] * (10 ** reduceDecimals));
   }
 
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external {
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPub] calldata _pubSignals) external {
     if(!verifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
       revert PrivateToken__InvalidProof();
     }
@@ -95,40 +103,42 @@ contract PrivateToken is IPrivateToken {
     if(sendTree._root() != pubs.treeRoot) {
       revert PrivateToken__InvalidTreeRoot();
     }
-    if(pubs.isBurn != 0) {
+    if(pubs.encryptedAmountSent[0] == 1) {
       // This is a burn
       // get recip address (recipPubKey) from the sendEphemeralKey
-      wrappedToken.transfer(address(uint160(pubs.sendEphemeralKey)), pubs.encryptedAmountSent * (10 ** reduceDecimals));
+      wrappedToken.transfer(address(uint160(pubs.encryptedAmountSent[2])), pubs.encryptedAmountSent[1] * (10 ** reduceDecimals));
     } else {
       // This might be a send
-      uint256 receiveTxHash = PoseidonT3.hash([pubs.encryptedAmountSent, pubs.sendEphemeralKey]);
-      encryptedSends.push(PrivateSend(pubs.encryptedAmountSent, pubs.sendEphemeralKey));
+      uint256 receiveTxHash = hashMulti(pubs.encryptedAmountSent);
+      encryptedSends.push(abi.encodePacked(pubs.encryptedAmountSent));
       sendTree._insert(receiveTxHash);
     }
 
   }
 
-  function parsePubSignals(uint[10] calldata _pubSignals) internal pure returns (PubSignals memory) {
+  function parsePubSignals(uint[nPub] calldata _pubSignals) internal pure returns (PubSignals memory) {
+    uint256[nO] memory encryptedSent;
+    for(uint i = 0; i<nO; i++) {
+      encryptedSent[i] = _pubSignals[i+4];
+    }
     return PubSignals(
       _pubSignals[0],
       _pubSignals[1],
       _pubSignals[2],
       _pubSignals[3],
-      _pubSignals[4],
-      _pubSignals[5],
-      _pubSignals[6],
-      _pubSignals[7],
-      _pubSignals[8],
-      _pubSignals[9]
+      encryptedSent,
+      _pubSignals[nPub-3],
+      _pubSignals[nPub-2],
+      _pubSignals[nPub-1]
     );
   }
 
 }
 
 interface IVerifier {
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) external view returns (bool);
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPub] calldata _pubSignals) external view returns (bool);
 }
 
 interface IMintVerifier {
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[3] calldata _pubSignals) external view returns (bool);
+  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPubMint] calldata _pubSignals) external view returns (bool);
 }

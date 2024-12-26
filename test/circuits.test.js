@@ -127,25 +127,26 @@ describe("privacy-token", () => {
         receiveTxHash, // genTree uses this second item
       ]);
 
+      const params = [
+        MAX_DEPTH,
+        MAX_AMOUNT_BITS,
+        MAX_SEND_AMOUNT,
+        ntru.q,
+        ntru.calculateNq(),
+        ntru.p,
+        ntru.calculateNp(),
+        ntru.N,
+        sendPacked.maxInputBits,
+        sendPacked.maxOutputBits,
+        sendPacked.outputSize,
+        sendPacked.arrLen,
+        privKeyPacked.outputSize,
+      ];
       const circuit = await circomkit.WitnessTester(`privacytoken`, {
         file: "privacy-token",
         template: "PrivacyToken",
         dir: "test/privacy-token",
-        params: [
-          MAX_DEPTH,
-          MAX_AMOUNT_BITS,
-          MAX_SEND_AMOUNT,
-          ntru.q,
-          ntru.calculateNq(),
-          ntru.p,
-          ntru.calculateNp(),
-          ntru.N,
-          sendPacked.maxInputBits,
-          sendPacked.maxOutputBits,
-          sendPacked.outputSize,
-          sendPacked.arrLen,
-          privKeyPacked.outputSize,
-        ],
+        params,
       });
       const input = {
         encryptedReceive: receivePacked.expected,
@@ -190,21 +191,22 @@ describe("privacy-token", () => {
     const encrypted = ntru.encryptBits(bigintToBits(sendAmount));
     const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
 
+    const params = [
+      MAX_AMOUNT_BITS,
+      MAX_SEND_AMOUNT,
+      ntru.q,
+      ntru.calculateNq(),
+      ntru.N,
+      sendPacked.maxInputBits,
+      sendPacked.maxOutputBits,
+      sendPacked.outputSize,
+      sendPacked.arrLen,
+    ];
     const circuit = await circomkit.WitnessTester(`privatemint`, {
       file: "privacy-token",
       template: "PrivateMint",
       dir: "test/privacy-token",
-      params: [
-        MAX_AMOUNT_BITS,
-        MAX_SEND_AMOUNT,
-        ntru.q,
-        ntru.calculateNq(),
-        ntru.N,
-        sendPacked.maxInputBits,
-        sendPacked.maxOutputBits,
-        sendPacked.outputSize,
-        sendPacked.arrLen,
-      ],
+      params,
     });
     const inputs = {
       sendAmount,
