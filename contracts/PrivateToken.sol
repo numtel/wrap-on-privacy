@@ -10,28 +10,20 @@ import "./IPrivateToken.sol";
 contract PrivateToken is IPrivateToken {
   using InternalLeanIMT for LeanIMTData;
 
-  uint8 public reduceDecimals;
-  IERC20 public wrappedToken;
   IVerifier public verifier;
   IMintVerifier public mintVerifier;
 
-  LeanIMTData sendTree;
-  bytes[] public encryptedSends;
+  // TODO support multiple trees per token
+  mapping(uint256 => LeanIMTData) sendTree;
+  mapping(uint256 => bytes[]) public encryptedSends;
   // keyed by publicKey
-  mapping(uint256 => PrivateAccount) public accounts;
+  mapping(uint256 => mapping(uint256 => PrivateAccount)) public accounts;
   // keyed by receiveNullifier
-  mapping(uint256 => bool) public receivedHashes;
+  mapping(uint256 => mapping(uint256 => bool)) public receivedHashes;
 
-  constructor(address tokenToWrap, uint8 _reduceDecimals, address _verifier, address _mintVerifier) {
-    wrappedToken = IERC20(tokenToWrap);
-    reduceDecimals = _reduceDecimals;
+  constructor(address _verifier, address _mintVerifier) {
     verifier = IVerifier(_verifier);
     mintVerifier = IMintVerifier(_mintVerifier);
-
-    // Populate the tree with a single entry so proofs can be generated
-    uint256 receiveTxHash = PoseidonT3.hash([uint256(1), 1]);
-    encryptedSends.push(abi.encodePacked(uint(1)));
-    sendTree._insert(receiveTxHash);
   }
 
   function hashMulti(uint[nO] memory input) internal pure returns (uint256) {
@@ -42,12 +34,12 @@ contract PrivateToken is IPrivateToken {
     return hash;
   }
 
-  function sendCount() external view returns (uint256) {
-    return encryptedSends.length;
+  function sendCount(address token) external view returns (uint256) {
+    return encryptedSends[uint256(uint160(token))].length;
   }
 
-  function treeRoot() external view returns (uint256) {
-    return sendTree._root();
+  function treeRoot(address token) external view returns (uint256) {
+    return sendTree[uint256(uint160(token))]._root();
   }
 
   function mint(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPubMint] calldata _pubSignals) external {
@@ -55,16 +47,22 @@ contract PrivateToken is IPrivateToken {
       revert PrivateToken__InvalidProof();
     }
 
+    if(_pubSignals[nPubMint-1] != block.chainid) {
+      revert PrivateToken__InvalidChainId();
+    }
+
+    address tokenAddr = address(uint160(_pubSignals[nPubMint-2]));
+
     uint256[nO] memory encryptedSent;
     for(uint i = 0; i<nO; i++) {
       encryptedSent[i] = _pubSignals[i];
     }
 
     uint256 receiveTxHash = hashMulti(encryptedSent);
-    encryptedSends.push(abi.encodePacked(encryptedSent));
-    sendTree._insert(receiveTxHash);
+    encryptedSends[_pubSignals[nPubMint-2]].push(abi.encodePacked(encryptedSent));
+    sendTree[_pubSignals[nPubMint-2]]._insert(receiveTxHash);
 
-    wrappedToken.transferFrom(msg.sender, address(this), _pubSignals[nPubMint-1] * (10 ** reduceDecimals));
+    IERC20(tokenAddr).transferFrom(msg.sender, address(this), _pubSignals[nPubMint-3]);
   }
 
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPub] calldata _pubSignals) external {
@@ -74,15 +72,21 @@ contract PrivateToken is IPrivateToken {
 
     // Ensure this receive hasn't happened before
     PubSignals memory pubs = parsePubSignals(_pubSignals);
-    if(receivedHashes[pubs.receiveNullifier] == true) {
+    if(receivedHashes[pubs.tokenAddr][pubs.receiveNullifier] == true) {
       revert PrivateToken__DuplicateNullifier();
     }
+
+    if(pubs.chainId != block.chainid) {
+      revert PrivateToken__InvalidChainId();
+    }
+
+    address tokenAddr = address(uint160(pubs.tokenAddr));
     // Set this nullifier
-    receivedHashes[pubs.receiveNullifier] = true;
+    receivedHashes[pubs.tokenAddr][pubs.receiveNullifier] = true;
 
     // Update the user's balance
-    uint encBalance = accounts[pubs.publicKey].encryptedBalance;
-    uint curNonce = accounts[pubs.publicKey].nonce;
+    uint encBalance = accounts[pubs.tokenAddr][pubs.publicKey].encryptedBalance;
+    uint curNonce = accounts[pubs.tokenAddr][pubs.publicKey].nonce;
     if(encBalance != pubs.encryptedBalance) {
       revert PrivateToken__InvalidBalance();
     }
@@ -95,23 +99,23 @@ contract PrivateToken is IPrivateToken {
     if(pubs.newBalanceNonce == 0) {
       revert PrivateToken__InvalidNewBalanceNonce();
     }
-    accounts[pubs.publicKey].encryptedBalance = pubs.finalBalance;
-    accounts[pubs.publicKey].nonce = pubs.newBalanceNonce;
+    accounts[pubs.tokenAddr][pubs.publicKey].encryptedBalance = pubs.finalBalance;
+    accounts[pubs.tokenAddr][pubs.publicKey].nonce = pubs.newBalanceNonce;
 
     // Submit possible send to tree
     // TODO support recent roots to like Semaphore
-    if(sendTree._root() != pubs.treeRoot) {
+    if(sendTree[pubs.tokenAddr]._root() != pubs.treeRoot) {
       revert PrivateToken__InvalidTreeRoot();
     }
     if(pubs.encryptedAmountSent[0] == 1) {
       // This is a burn
       // get recip address (recipPubKey) from the sendEphemeralKey
-      wrappedToken.transfer(address(uint160(pubs.encryptedAmountSent[2])), pubs.encryptedAmountSent[1] * (10 ** reduceDecimals));
+      IERC20(tokenAddr).transfer(address(uint160(pubs.encryptedAmountSent[2])), pubs.encryptedAmountSent[1]);
     } else {
       // This might be a send
       uint256 receiveTxHash = hashMulti(pubs.encryptedAmountSent);
-      encryptedSends.push(abi.encodePacked(pubs.encryptedAmountSent));
-      sendTree._insert(receiveTxHash);
+      encryptedSends[pubs.tokenAddr].push(abi.encodePacked(pubs.encryptedAmountSent));
+      sendTree[pubs.tokenAddr]._insert(receiveTxHash);
     }
 
   }
@@ -127,6 +131,8 @@ contract PrivateToken is IPrivateToken {
       _pubSignals[2],
       _pubSignals[3],
       encryptedSent,
+      _pubSignals[nPub-5],
+      _pubSignals[nPub-4],
       _pubSignals[nPub-3],
       _pubSignals[nPub-2],
       _pubSignals[nPub-1]

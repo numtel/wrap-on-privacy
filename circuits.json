@@ -2,7 +2,7 @@
   "privacytoken": {
     "file": "circuits/privacy-token",
     "template": "PrivacyToken",
-    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce"],
+    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce", "tokenAddr", "chainId"],
     "params": [
        32,  252,  131072,
        32,   15,       3,
@@ -14,7 +14,7 @@
   "privatemint": {
     "file": "circuits/privacy-token",
     "template": "PrivateMint",
-    "pubs": ["sendAmount"],
+    "pubs": ["sendAmount", "tokenAddr", "chainId"],
     "params": [252, 131072, 32, 15, 17, 5, 250, 3, 150]
   }
 }

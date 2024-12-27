@@ -25,6 +25,9 @@ template PrivacyToken(
   packLen,
   privKeySize
 ) {
+  signal input tokenAddr;
+  signal input chainId;
+
   signal input encryptedBalance;
   signal input balanceNonce;
   signal input newBalanceNonce;
@@ -56,6 +59,12 @@ template PrivacyToken(
   signal output finalBalance;
   signal output receiveNullifier;
   signal output encryptedAmountSent[nO];
+
+  // Ensure that this proof is only applied to the correct token contract
+  signal tokenAddrSq;
+  signal chainIdSq;
+  tokenAddrSq <== tokenAddr * tokenAddr;
+  chainIdSq <== chainId * chainId;
 
   // Step 1: Verify private key coherency
 
@@ -191,6 +200,9 @@ template PrivacyToken(
 }
 
 template PrivateMint(MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, N, log2q, outPartBits, nO, packLen) {
+  signal input tokenAddr;
+  signal input chainId;
+
   signal input sendAmount;
   signal input recipH[N];
   signal input sendR[N];
@@ -198,6 +210,12 @@ template PrivateMint(MAX_AMOUNT_BITS, MAX_SEND_AMOUNT, q, nq, N, log2q, outPartB
   signal input remainderE[N+1];
 
   signal output encryptedSend[nO];
+
+  // Ensure that this proof is only applied to the correct token contract
+  signal tokenAddrSq;
+  signal chainIdSq;
+  tokenAddrSq <== tokenAddr * tokenAddr;
+  chainIdSq <== chainId * chainId;
 
   var sendM[N] = Num2Bits(N)(sendAmount);
 

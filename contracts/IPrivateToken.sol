@@ -23,8 +23,11 @@ interface IPrivateToken {
     uint256 encryptedBalance;
     uint256 balanceNonce;
     uint256 newBalanceNonce;
+    uint256 tokenAddr;
+    uint256 chainId;
   }
 
+  error PrivateToken__InvalidChainId();
   error PrivateToken__InvalidProof();
   error PrivateToken__DuplicateNullifier();
   error PrivateToken__InvalidBalance();
