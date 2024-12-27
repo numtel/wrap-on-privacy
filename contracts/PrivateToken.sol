@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {InternalLeanIMT, LeanIMTData, SNARK_SCALAR_FIELD} from "./InternalLeanIMT.sol";
+import {InternalLeanIMT, LeanIMTData} from "./InternalLeanIMT.sol";
 import {PoseidonT3} from "./PoseidonT3.sol";
 
 import "./IPrivateToken.sol";

@@ -2,10 +2,9 @@
 pragma solidity ^0.8.20;
 
 // Adjust based on key size
-uint256 constant MAX_SEND = 131072;
 uint256 constant nO = 3;
-uint256 constant nPub = nO + 7;
-uint256 constant nPubMint = nO + 1;
+uint256 constant nPub = nO + 9;
+uint256 constant nPubMint = nO + 3;
 
 interface IPrivateToken {
 

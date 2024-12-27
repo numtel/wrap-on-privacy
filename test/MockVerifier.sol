@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "../contracts/IPrivateToken.sol";
 
 contract MockVerifier {
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPub] calldata _pubSignals) external view returns (bool) {
+  function verifyProof(uint[2] calldata, uint[2][2] calldata, uint[2] calldata, uint[nPub] calldata) external pure returns (bool) {
     return true;
   }
 }
