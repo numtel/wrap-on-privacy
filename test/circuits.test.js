@@ -211,6 +211,8 @@ describe("privacy-token", () => {
       params,
     });
     const inputs = {
+      tokenAddr: 123,
+      chainId: 234,
       sendAmount,
       recipH: encrypted.inputs.h,
       sendR: encrypted.inputs.r,

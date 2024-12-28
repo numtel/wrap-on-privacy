@@ -2,58 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face { font-family: Modak; font-weight: 400; src: url(fonts/Modak-Regular.ttf); }
+/* FA icons flash huge on page load? */
+.svg-inline--fa { max-height: 1rem; }
 
-body { background: #c4c1bb; color:#111; margin: 20px auto; max-width: 720px; padding: 10px;}
-
-#site-title { font-family:Modak; }
+body { background: #222; user-select: none; margin:80px 0; }
+dialog { width:100%; max-width:720px; min-width:320px; background: #ddd; padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px #fff5; border: 2px outset;}
+dialog>h2 { padding: 5px 20px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, #009 0%, #9cf 100%); color:#fff; border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
 
 #connect { position: absolute; top: 10px; right: 10px; }
 
-#testnet-mint { transform:rotate(-35deg); position:absolute; top: 60px; left:-90px;}
-button { display:block; background:#900; padding: 15px 90px; color: #fff; border-radius: 10px; margin:0 auto;}
-button:hover { background:#c00; }
-button:disabled { background: #744; color:#aaa; }
+fieldset { border: 2px inset; border-radius: 2px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
+legend { padding: 3px; }
+label.radio { display: inline-block; padding: 10px; }
+label.radio input { margin-right: 5px; }
 
-form { width: 48%; float:left; margin:5px;}
-fieldset { padding: 10px; background:#9003; border-radius: 10px;}
-legend { padding: 5px; background:#ac5350; border-radius:5px; padding: 4px 10px; }
-label { display: block; padding: 5px 0;}
-label span { display:block; }
-label input { border-radius: 5px; color:#000; background:#fff9;  padding: 5px; width:100%;}
-fieldset button { margin-top: 20px; }
+label.text { display: block; }
+label.text span { display: block; }
+label.text input { border: 1px inset; border-radius: 2px; padding: 5px; width:100%; }
 
-p.balance {padding: 10px; background:#9003; border-radius: 10px; margin: 20px 0;}
-p.balance span { padding: 0 10px; }
+.button { padding: 5px 8px; border-radius: 2px; background:#ddd; border: 2px outset; margin: 0 10px; }
+.button:active { border: 2px inset; }
+.button:hover { background:#bbb; }
 
-h2 { font-size: 2rem; clear:both; text-align:center;margin-top:3rem;}
-ul.incoming { clear:both; }
-ul.incoming li p { background:#0002; padding: 20px; margin: 5px; border-radius:10px; }
-ul.incoming li span.amount::before { content: "Amount: " }
-ul.incoming li p.pending { background: #9004; }
-ul.incoming button { display:inline-block; padding: 5px 15px; margin-left:20px; }
+.link { text-decoration:underline; color:#009; }
+.link:hover { color:#03f; }
 
+.banner { border:2px inset; background:url(/world.png) no-repeat bottom center #2bc; background-size:contain; margin:0 20px 15px 0;  width: 30%; height: 300px; float:left; }
+.banner.import { background-image:url(/spy.png);}
+.banner.registry { background-image:url(/contacts.png);}
+.hr { border: 1px inset; margin:15px 0;  clear:both;}
+.controls { display:flex; flex-direction:row; justify-content:space-between;}
 
-footer {
-  margin: 80px 0 50px;
-  display:flex;
-  justify-content: center;
-}
-
-/* FA icons flash huge on page load? */
-.svg-inline--fa { max-height: 1rem; }
-footer .svg-inline--fa { max-height: 2rem; }
-
-/*
-#logo {
-  background-image: url(images/logo-light.png);
-  background-repeat: no-repeat;
-  background-position: 10px center;
-  background-size: auto 75%;
-}
-@media (prefers-color-scheme: dark) {
-#logo {
-  background-image: url(images/logo-dark.png);
-}}
-
-*/
+p { margin-bottom:15px; }

@@ -1,0 +1,1 @@
+[{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"data","outputs":[{"internalType":"bytes","name":"","type":"bytes"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes","name":"val","type":"bytes"}],"name":"set","outputs":[],"stateMutability":"nonpayable","type":"function"}]

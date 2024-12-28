@@ -1,7 +1,5 @@
 # Wrap on Privacy
 
-![Wrap on privacy logo](public/wrap-on-privacy.png)
-
 Deploy a privacy pool for an ERC20 that hides amounts sent and recipients
 
 Buy a coffee without exposing your entire financial history!

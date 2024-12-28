@@ -13,7 +13,8 @@
     "compile:mint-circuit": "circomkit compile privatemint",
     "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
     "deploy:mint-circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privatemint.circom",
-    "deploy:contract": "VERIFIER_ADDRESS=0xe4d8a8c3e0a98ca7aa7ba775a52e48bc8c72a52a MINT_VERIFIER_ADDRESS=0x355d26cfecad96d84e71a8a16a9ba9358230d38e forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
+    "deploy:contract": "VERIFIER_ADDRESS=0x60d9bbec388cb5804c8ede5510b81f783476ee38 MINT_VERIFIER_ADDRESS=0x31de5d6e9675479a5f30c6389bd43fc9b6f47fe9 forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
+    "deploy:registry-contract": "forge script script/KeyRegistry.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
     "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/"
   },
   "dependencies": {
@@ -28,7 +29,7 @@
     "@zk-kit/imt": "2.0.0-beta",
     "circomlib": "2.0.5",
     "ffjavascript": "0.2.62",
-    "ntru-circom": "0.0.9",
+    "ntru-circom": "0.0.10",
     "poseidon-lite": "0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
