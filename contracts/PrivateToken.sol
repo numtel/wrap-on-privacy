@@ -16,6 +16,7 @@ contract PrivateToken is IPrivateToken {
   // TODO support multiple trees per token
   mapping(uint256 => LeanIMTData) sendTree;
   mapping(uint256 => bytes[]) public encryptedSends;
+  mapping(uint256 => uint256[]) public sendTimes;
   // keyed by publicKey
   mapping(uint256 => mapping(uint256 => PrivateAccount)) public accounts;
   // keyed by receiveNullifier
@@ -60,6 +61,7 @@ contract PrivateToken is IPrivateToken {
 
     uint256 receiveTxHash = hashMulti(encryptedSent);
     encryptedSends[_pubSignals[nPubMint-2]].push(abi.encodePacked(encryptedSent));
+    sendTimes[_pubSignals[nPubMint-2]].push(block.timestamp);
     sendTree[_pubSignals[nPubMint-2]]._insert(receiveTxHash);
 
     IERC20(tokenAddr).transferFrom(msg.sender, address(this), _pubSignals[nPubMint-3]);
@@ -115,6 +117,7 @@ contract PrivateToken is IPrivateToken {
       // This might be a send
       uint256 receiveTxHash = hashMulti(pubs.encryptedAmountSent);
       encryptedSends[pubs.tokenAddr].push(abi.encodePacked(pubs.encryptedAmountSent));
+      sendTimes[pubs.tokenAddr].push(block.timestamp);
       sendTree[pubs.tokenAddr]._insert(receiveTxHash);
     }
 

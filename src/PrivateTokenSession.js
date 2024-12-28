@@ -1,8 +1,9 @@
 import { groth16 } from 'snarkjs';
-import { poseidon2 } from "poseidon-lite";
+import { poseidon2 } from 'poseidon-lite';
 import NTRU, {
   bigintToBits,
   packOutput,
+  unpackInput,
 } from 'ntru-circom';
 
 import {
@@ -17,6 +18,7 @@ import registryAbi from './abi/KeyRegistry.json';
 
 const contractAddr = '0xB9DE28d814C68028178b4dB26cA47D2458535351';
 const registryAddr = '0x1BbF48d8178743605C0BE1e5708Bf7e0a38B22E0';
+const SESH_KEY = 'private-token-session';
 
 export default class PrivateTokenSession {
   constructor(options) {
@@ -40,18 +42,39 @@ export default class PrivateTokenSession {
       this.ntru.generateNewPublicKeyGH();
     }
   }
-  export() {
+  async export() {
     const {password} = this;
-    if(!password) throw new Error('missing password');
+    if(!password) throw new Error('Missing password!');
 
     const data = JSON.parse(JSON.stringify(this));
+    console.log(data);
     delete data.ntru.fp;
     delete data.ntru.fq;
     delete data.ntru.I;
     return encryptJson(JSON.stringify(data), password);
   }
+  async saveToLocalStorage() {
+    const data = await this.export();
+    localStorage.setItem(SESH_KEY, JSON.stringify(data));
+  }
+  static hasLocalStorage() {
+    return localStorage.hasOwnProperty(SESH_KEY);
+  }
+  static async loadFromLocalStorage(password) {
+
+  }
   static async import(data, password) {
     return new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
+  }
+  // TODO this in the wrong spot
+  static fromPackedPublicKey(hBytes) {
+    // First need to calculate the maxOutputBits for a public key packing
+    const {ntru} = new PrivateTokenSession;
+    const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
+    const unpacked = splitHexToBigInt(hBytes, hPacked.maxOutputBits);
+    const toRaw = unpackInput(ntru.q, hPacked.maxOutputBits, unpacked);
+    ntru.h = toRaw.unpacked;
+    return ntru;
   }
   scanForIncoming() {
   }
@@ -65,6 +88,19 @@ export default class PrivateTokenSession {
     const publicKey = calcMultiHash(privKeyPacked.expected);
 
     return {publicKey, privateKey};
+  }
+  registerTx() {
+    const {ntru} = this;
+    const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
+    const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
+
+    return {
+      abi: registryAbi,
+      address: registryAddr,
+      functionName: 'set',
+      args: [ `0x${hBytes}` ],
+    };
+
   }
   async mintTx(sendAmount, tokenAddr, chainId) {
     const {ntru} = this;
@@ -108,6 +144,65 @@ function calcMultiHash(input) {
   }
   return hash;
 }
+
+function combineBigIntToHex(bigints, maxBits) {
+    if (!Array.isArray(bigints) || !bigints.every(b => typeof b === 'bigint')) {
+        throw new TypeError('Input must be an array of BigInt values.');
+    }
+
+    if (typeof maxBits !== 'number' || maxBits <= 0 || !Number.isInteger(maxBits)) {
+        throw new TypeError('maxBits must be a positive integer.');
+    }
+
+    const maxValue = (1n << BigInt(maxBits)) - 1n; // Maximum value that fits within maxBits
+
+    // Ensure all BigInt values are within the allowable range
+    for (const bigint of bigints) {
+        if (bigint < 0n || bigint > maxValue) {
+            throw new RangeError(`BigInt value ${bigint} exceeds the allowable range for ${maxBits} bits.`);
+        }
+    }
+
+    let combinedBinary = '';
+
+    // Convert each BigInt to binary and pad it to the required length
+    for (const bigint of bigints) {
+        const binaryString = bigint.toString(2).padStart(maxBits, '0');
+        combinedBinary += binaryString;
+    }
+
+    // Convert the combined binary string to a hexadecimal string
+    const combinedHex = BigInt('0b' + combinedBinary).toString(16);
+
+    return combinedHex;
+}
+
+
+function splitHexToBigInt(hexString, maxBits) {
+    if (typeof hexString !== 'string') {
+        throw new TypeError('Input must be a hexadecimal string.');
+    }
+
+    if (typeof maxBits !== 'number' || maxBits <= 0 || !Number.isInteger(maxBits)) {
+        throw new TypeError('maxBits must be a positive integer.');
+    }
+
+    let combinedBinary = BigInt('0x' + hexString).toString(2);
+    const totalBits = combinedBinary.length;
+
+    // Pad combinedBinary with leading zeros if it doesn't align with maxBits
+    const paddedLength = Math.ceil(totalBits / maxBits) * maxBits;
+    combinedBinary = combinedBinary.padStart(paddedLength, '0');
+
+    const bigints = [];
+    for (let i = 0; i < combinedBinary.length; i += maxBits) {
+        const segment = combinedBinary.slice(i, i + maxBits);
+        bigints.push(BigInt('0b' + segment));
+    }
+
+    return bigints;
+}
+
 
 // Helper function to encode ArrayBuffer to Base64
 function arrayBufferToBase64(buffer) {

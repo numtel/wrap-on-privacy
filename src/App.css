@@ -5,7 +5,7 @@
 /* FA icons flash huge on page load? */
 .svg-inline--fa { max-height: 1rem; }
 
-body { background: #222; user-select: none; margin:80px 0; }
+body { background: #222; margin:80px 0;}
 dialog { width:100%; max-width:720px; min-width:320px; background: #ddd; padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px #fff5; border: 2px outset;}
 dialog>h2 { padding: 5px 20px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, #009 0%, #9cf 100%); color:#fff; border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
 
@@ -13,8 +13,9 @@ dialog>h2 { padding: 5px 20px; font-size: 115%; font-weight: bold; background: l
 
 fieldset { border: 2px inset; border-radius: 2px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
 legend { padding: 3px; }
-label.radio { display: inline-block; padding: 10px; }
+label.radio { display: inline-block; padding: 4px; margin: 6px; }
 label.radio input { margin-right: 5px; }
+label.radio:active { outline:1px dotted #000; }
 
 label.text { display: block; }
 label.text span { display: block; }
@@ -22,14 +23,16 @@ label.text input { border: 1px inset; border-radius: 2px; padding: 5px; width:10
 
 .button { padding: 5px 8px; border-radius: 2px; background:#ddd; border: 2px outset; margin: 0 10px; }
 .button:active { border: 2px inset; }
-.button:hover { background:#bbb; }
+.button:hover { background:#eee; }
+.button:disabled { background: #ddd; color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff; border: 2px outset; }
 
 .link { text-decoration:underline; color:#009; }
 .link:hover { color:#03f; }
 
-.banner { border:2px inset; background:url(/world.png) no-repeat bottom center #2bc; background-size:contain; margin:0 20px 15px 0;  width: 30%; height: 300px; float:left; }
+.banner { border:2px inset; background:url(/world.png) no-repeat bottom center #2bc; background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }
 .banner.import { background-image:url(/spy.png);}
 .banner.registry { background-image:url(/contacts.png);}
+.banner.password { background-image:url(/lock.png);}
 .hr { border: 1px inset; margin:15px 0;  clear:both;}
 .controls { display:flex; flex-direction:row; justify-content:space-between;}
 
