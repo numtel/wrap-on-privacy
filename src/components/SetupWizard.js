@@ -10,37 +10,40 @@ import {
 import PrivateTokenSession, {SESH_KEY} from '../PrivateTokenSession.js';
 
 import FileDropZone from './FileDropZone.js';
+import Dialog from './Dialog.js';
 
-export default function SetupWizard({ sesh, setSesh }) {
+export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) {
   const [step, setStep] = useState(PrivateTokenSession.hasLocalStorage() ? -1 : 0);
-  if(step === -1) return (<Login {...{sesh, setSesh, setStep}} />);
-  if(step === 3) return (<SaveToRegistry {...{sesh, setSesh, setStep}} />);
-  if(step === 2) return (<SetPassword {...{sesh, setSesh, setStep}} />);
-  if(step === 1) return (<ImportSession {...{sesh, setSesh, setStep}} />);
-  if(step === 0) return (<dialog open>
-    <h2>Wrap on Privacy Setup Wizard</h2>
-    <div className="flex">
-      <div className="banner"></div>
-      <div>
-        <p>Generate an account key for private ERC20 transactions.</p>
-        <p>This key is stored inside your browser session. You may export your session to a file.</p>
-        <p>Click next to create a new key or 'Import' to load a session file from your device.</p>
+  return (<Dialog show={showSetup} setShow={setShowSetup}>
+    {step === -1 && <Login {...{sesh, setSesh, setStep}} />}
+    {step === 3 && <SaveToRegistry {...{sesh, setSesh, setStep}} />}
+    {step === 2 && <SetPassword {...{sesh, setSesh, setStep}} />}
+    {step === 1 && <ImportSession {...{sesh, setSesh, setStep}} />}
+    {step === 0 && <>
+      <h2>Wrap on Privacy Setup Wizard</h2>
+      <div className="flex">
+        <div className="banner"></div>
+        <div>
+          <p>Generate an account key for private ERC20 transactions.</p>
+          <p>This key is stored inside your browser session. You may export your session to a file.</p>
+          <p>Click next to create a new key or 'Import' to load a session file from your device.</p>
+        </div>
       </div>
-    </div>
-    <div className="hr"></div>
-    <div className="controls">
-      <button className="button" onClick={() => setStep(1)}>
-        Import
-      </button>
-      {PrivateTokenSession.hasLocalStorage() &&
-        <button className="button" type="button" onClick={() => setStep(-1)}>
-          Login
-        </button>}
-      <button className="button" onClick={() => setStep(2)}>
-        Next &gt;
-      </button>
-    </div>
-  </dialog>);
+      <div className="hr"></div>
+      <div className="controls">
+        <button className="button" onClick={() => setStep(1)}>
+          Import
+        </button>
+        {PrivateTokenSession.hasLocalStorage() &&
+          <button className="button" type="button" onClick={() => setStep(-1)}>
+            Login
+          </button>}
+        <button className="button" onClick={() => setStep(2)}>
+          Next &gt;
+        </button>
+      </div>
+    </>}
+  </Dialog>);
 }
 
 function Login({sesh, setSesh, setStep}) {
@@ -57,7 +60,7 @@ function Login({sesh, setSesh, setStep}) {
       return;
     }
   }
-  return (<dialog open>
+  return (<>
     <h2>Login to Session</h2>
     <form onSubmit={onNext}>
       <div className="flex">
@@ -81,7 +84,7 @@ function Login({sesh, setSesh, setStep}) {
         </button>
       </div>
     </form>
-  </dialog>);
+  </>);
 }
 
 function ImportSession({sesh, setStep}) {
@@ -95,7 +98,7 @@ function ImportSession({sesh, setStep}) {
     localStorage.setItem(SESH_KEY, file);
     setStep(-1);
   }
-  return (<dialog open>
+  return (<>
     <h2>Import Session File</h2>
     <div className="flex">
       <div className="banner import"></div>
@@ -110,7 +113,7 @@ function ImportSession({sesh, setStep}) {
         &lt; Back
       </button>
     </div>
-  </dialog>);
+  </>);
 }
 
 function SetPassword({sesh, setSesh, setStep}) {
@@ -137,7 +140,7 @@ function SetPassword({sesh, setSesh, setStep}) {
       return;
     }
   }
-  return (<dialog open>
+  return (<>
     <h2>Set Session Password</h2>
     <form onSubmit={onNext}>
       <div className="flex">
@@ -166,7 +169,7 @@ function SetPassword({sesh, setSesh, setStep}) {
         </button>
       </div>
     </form>
-  </dialog>);
+  </>);
 }
 
 export function SaveToRegistry({sesh, setStep}) {
@@ -199,7 +202,7 @@ export function SaveToRegistry({sesh, setStep}) {
     console.log(tx);
 //     writeContract(tx);
   }
-  return (<dialog open>
+  return (<Dialog>
     <h2>Save Public Key to Registry</h2>
     <div className="flex">
       <div className="banner registry"></div>
@@ -217,5 +220,5 @@ export function SaveToRegistry({sesh, setStep}) {
         Register Public Key
       </button>
     </div>
-  </dialog>);
+  </Dialog>);
 }

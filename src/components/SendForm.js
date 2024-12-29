@@ -5,7 +5,9 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-export default function SendForm({ sesh, tokenAddr, chainId }) {
+import Dialog from './Dialog.js';
+
+export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
   async function handleSubmit(event) {
     event.preventDefault();
   }
@@ -13,7 +15,7 @@ export default function SendForm({ sesh, tokenAddr, chainId }) {
   function sendToSelf() {
   }
 
-  return (<dialog open>
+  return (<Dialog show={showSend} setShow={setShowSend}>
     <h2>Transfer Tokens</h2>
     <form onSubmit={handleSubmit}>
       <div className="flex flex-col mb-4 sm:flex-row sm:space-x-4 justify-evenly sm:space-y-0 space-y-4">
@@ -57,5 +59,5 @@ export default function SendForm({ sesh, tokenAddr, chainId }) {
         </button>
       </div>
     </form>
-  </dialog>);
+  </Dialog>);
 }
