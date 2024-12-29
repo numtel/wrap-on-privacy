@@ -15,10 +15,9 @@ import {
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
 import registryAbi from './abi/KeyRegistry.json';
+import {byChain} from'./contracts.js';
 
-const contractAddr = '0xB9DE28d814C68028178b4dB26cA47D2458535351';
-const registryAddr = '0x1BbF48d8178743605C0BE1e5708Bf7e0a38B22E0';
-const SESH_KEY = 'private-token-session';
+export const SESH_KEY = 'private-token-session';
 
 export default class PrivateTokenSession {
   constructor(options) {
@@ -47,7 +46,6 @@ export default class PrivateTokenSession {
     if(!password) throw new Error('Missing password!');
 
     const data = JSON.parse(JSON.stringify(this));
-    console.log(data);
     delete data.ntru.fp;
     delete data.ntru.fq;
     delete data.ntru.I;
@@ -57,11 +55,15 @@ export default class PrivateTokenSession {
     const data = await this.export();
     localStorage.setItem(SESH_KEY, JSON.stringify(data));
   }
+  async download() {
+    const data = await this.export();
+    downloadTextFile(JSON.stringify(data), 'private-wallet.sesh');
+  }
   static hasLocalStorage() {
     return localStorage.hasOwnProperty(SESH_KEY);
   }
   static async loadFromLocalStorage(password) {
-
+    return new PrivateTokenSession(JSON.parse(await decryptJson(JSON.parse(localStorage.getItem(SESH_KEY)), password)));
   }
   static async import(data, password) {
     return new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
@@ -89,14 +91,14 @@ export default class PrivateTokenSession {
 
     return {publicKey, privateKey};
   }
-  registerTx() {
+  registerTx(chainId) {
     const {ntru} = this;
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
 
     return {
       abi: registryAbi,
-      address: registryAddr,
+      address: byChain[chainId].registryAddr,
       functionName: 'set',
       args: [ `0x${hBytes}` ],
     };
@@ -128,13 +130,23 @@ export default class PrivateTokenSession {
     const args = getCalldata(proof);
     return {
       abi,
-      address: contractAddr,
+      address: byChain[chainId].contractAddr,
       functionName: 'mint',
       args,
     };
   }
   mainTx() {
   }
+}
+
+function downloadTextFile(content, filename) {
+  const blob = new Blob([content], { type: 'text/plain' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function calcMultiHash(input) {

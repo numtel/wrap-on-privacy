@@ -13,6 +13,9 @@ contract PrivateToken is IPrivateToken {
   IVerifier public verifier;
   IMintVerifier public mintVerifier;
 
+  address[] public liveTokens;
+  mapping(address => uint256) public tokenIsLive;
+
   // TODO support multiple trees per token
   mapping(uint256 => LeanIMTData) sendTree;
   mapping(uint256 => bytes[]) public encryptedSends;
@@ -53,6 +56,10 @@ contract PrivateToken is IPrivateToken {
     }
 
     address tokenAddr = address(uint160(_pubSignals[nPubMint-2]));
+    if(tokenIsLive[tokenAddr] == 0) {
+      tokenIsLive[tokenAddr] = block.timestamp;
+      liveTokens.push(tokenAddr);
+    }
 
     uint256[nO] memory encryptedSent;
     for(uint i = 0; i<nO; i++) {

@@ -5,12 +5,12 @@ const FileDropZone = ({ onFileSelect, acceptFiletype }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
       if (onFileSelect) {
-        onFileSelect(file);  // Call the prop function with the selected file
+        onFileSelect(await readFile(file));
       }
     }
   };
@@ -24,14 +24,14 @@ const FileDropZone = ({ onFileSelect, acceptFiletype }) => {
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) {
       setSelectedFile(file);
       if (onFileSelect) {
-        onFileSelect(file);  // Call the prop function with the dropped file
+        onFileSelect(await readFile(file));
       }
     }
   };
@@ -72,4 +72,17 @@ const FileDropZone = ({ onFileSelect, acceptFiletype }) => {
 };
 
 export default FileDropZone;
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+   const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+    reader.onerror = () => {
+      reject(new Error("Error reading file"));
+    };
+    reader.readAsText(file); 
+  });
+}
 

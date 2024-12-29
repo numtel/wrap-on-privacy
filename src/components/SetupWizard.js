@@ -7,16 +7,16 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import PrivateTokenSession from '../PrivateTokenSession.js';
+import PrivateTokenSession, {SESH_KEY} from '../PrivateTokenSession.js';
 
 import FileDropZone from './FileDropZone.js';
 
-export default function SetupWizard({ sesh }) {
+export default function SetupWizard({ sesh, setSesh }) {
   const [step, setStep] = useState(PrivateTokenSession.hasLocalStorage() ? -1 : 0);
-  if(step === -1) return (<Login {...{sesh, setStep}} />);
-  if(step === 3) return (<SaveToRegistry {...{sesh, setStep}} />);
-  if(step === 2) return (<SetPassword {...{sesh, setStep}} />);
-  if(step === 1) return (<ImportSession {...{sesh, setStep}} />);
+  if(step === -1) return (<Login {...{sesh, setSesh, setStep}} />);
+  if(step === 3) return (<SaveToRegistry {...{sesh, setSesh, setStep}} />);
+  if(step === 2) return (<SetPassword {...{sesh, setSesh, setStep}} />);
+  if(step === 1) return (<ImportSession {...{sesh, setSesh, setStep}} />);
   if(step === 0) return (<dialog open>
     <h2>Wrap on Privacy Setup Wizard</h2>
     <div className="flex">
@@ -43,13 +43,14 @@ export default function SetupWizard({ sesh }) {
   </dialog>);
 }
 
-function Login({sesh, setStep}) {
+function Login({sesh, setSesh, setStep}) {
   const [newPw, setNewPw] = useState('');
 
   async function onNext(event) {
     event.preventDefault();
     try {
-      toast.error('fooo');
+      setSesh(await PrivateTokenSession.loadFromLocalStorage(newPw));
+      toast.success('Login Successful!');
     } catch(error) {
       console.error(error);
       toast.error(error.message);
@@ -85,7 +86,14 @@ function Login({sesh, setStep}) {
 
 function ImportSession({sesh, setStep}) {
   function onFile(file) {
-    console.log(file);
+    if(PrivateTokenSession.hasLocalStorage() &&
+      !confirm('Are you sure you wish to overwrite the existing session?\n\n' +
+        'If you do not have the session backup file, ' +
+        'you will lose access to any private funds from the account.')) {
+      throw new Error('Session overwrite aborted!');
+    }
+    localStorage.setItem(SESH_KEY, file);
+    setStep(-1);
   }
   return (<dialog open>
     <h2>Import Session File</h2>
@@ -98,9 +106,6 @@ function ImportSession({sesh, setStep}) {
     </div>
     <div className="hr"></div>
     <div className="controls">
-        <button className="button" type="button" onClick={() => setStep(0)}>
-          &lt; Back
-        </button>
       <button className="button" onClick={() => setStep(0)}>
         &lt; Back
       </button>
@@ -108,7 +113,7 @@ function ImportSession({sesh, setStep}) {
   </dialog>);
 }
 
-function SetPassword({sesh, setStep}) {
+function SetPassword({sesh, setSesh, setStep}) {
   const [newPw, setNewPw] = useState('');
   const [downloadSesh, setDownloadSesh] = useState(true);
   async function onNext(event) {
@@ -120,10 +125,12 @@ function SetPassword({sesh, setStep}) {
           'you will lose access to any private funds from the account.')) {
         throw new Error('Session overwrite aborted!');
       }
-      sesh.password = newPw;
-      await sesh.saveToLocalStorage();
-      console.log(downloadSesh, newPw);
-      setStep(3);
+      const newSesh = new PrivateTokenSession({
+        password: newPw,
+      });
+      await newSesh.saveToLocalStorage();
+      if(downloadSesh) await newSesh.download();
+      setSesh(newSesh);
     } catch(error) {
       console.error(error);
       toast.error(error.message);
@@ -162,7 +169,7 @@ function SetPassword({sesh, setStep}) {
   </dialog>);
 }
 
-function SaveToRegistry({sesh, setStep}) {
+export function SaveToRegistry({sesh, setStep}) {
   const account = useAccount();
 
   const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
