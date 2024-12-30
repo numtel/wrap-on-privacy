@@ -200,11 +200,20 @@ function SetPassword({sesh, setSesh, setStep}) {
   </>);
 }
 
-export function SaveToRegistry({sesh, setStep}) {
+export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
   const account = useAccount();
 
   const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
+  const primaryInputRef = useRef(null);
+  const disabled = !account.isConnected || isPending || (data && txPending);
+
+  useEffect(() => {
+    if (showSaveToRegistry && primaryInputRef.current) {
+      primaryInputRef.current.focus();
+    }
+  }, [showSaveToRegistry, disabled]);
+
   useEffect(() => {
     txSuccess && console.log('done');
   }, [ txSuccess ]);
@@ -221,16 +230,17 @@ export function SaveToRegistry({sesh, setStep}) {
     } else if(data && txPending) {
       toast.loading('Waiting for transaction...');
     } else if(data && txSuccess) {
+      setShowSaveToRegistry(false);
+      setRefreshStatus(x=> x + 1);
       toast.success('Successfully registered public key!');
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
   function registerKey() {
-    const tx = sesh.registerTx();
-    console.log(tx);
-//     writeContract(tx);
+    const tx = sesh.registerTx(account.chainId);
+    writeContract(tx);
   }
-  return (<Dialog>
+  return (<Dialog show={showSaveToRegistry} setShow={setShowSaveToRegistry}>
     <h2>Save Public Key to Registry</h2>
     <div className="flex">
       <div className="banner registry"></div>
@@ -241,10 +251,13 @@ export function SaveToRegistry({sesh, setStep}) {
     </div>
     <div className="hr"></div>
     <div className="controls">
-      <button className="button" disabled={isPending || (data && txPending)} onClick={() => setStep(2)}>
-        &lt; Back
-      </button>
-      <button className="button" disabled={!account.isConnected || isPending || (data && txPending)} onClick={registerKey}>
+      <span>&nbsp;</span>
+      <button
+        ref={primaryInputRef}
+        className="button"
+        onClick={registerKey}
+        {...{disabled}}
+      >
         Register Public Key
       </button>
     </div>

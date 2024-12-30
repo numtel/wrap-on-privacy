@@ -98,7 +98,7 @@ export default class PrivateTokenSession {
 
     return {
       abi: registryAbi,
-      address: byChain[chainId].registryAddr,
+      address: byChain[chainId].KeyRegistry,
       functionName: 'set',
       args: [ `0x${hBytes}` ],
     };
@@ -130,7 +130,7 @@ export default class PrivateTokenSession {
     const args = getCalldata(proof);
     return {
       abi,
-      address: byChain[chainId].contractAddr,
+      address: byChain[chainId].PrivateToken,
       functionName: 'mint',
       args,
     };
@@ -184,7 +184,10 @@ function combineBigIntToHex(bigints, maxBits) {
     }
 
     // Convert the combined binary string to a hexadecimal string
-    const combinedHex = BigInt('0b' + combinedBinary).toString(16);
+    let combinedHex = BigInt('0b' + combinedBinary).toString(16);
+    if (combinedHex.length % 2 !== 0) {
+      combinedHex = combinedHex + '0';
+    }
 
     return combinedHex;
 }

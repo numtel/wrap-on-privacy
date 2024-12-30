@@ -1,27 +1,42 @@
 import { useState, useEffect, useRef } from 'react';
 import {
+  useAccount,
+  useWalletClient,
+} from 'wagmi';
+import {
+  useConnectModal,
+  useAccountModal,
+  useChainModal,
+} from '@rainbow-me/rainbowkit';
+import {
   LockOpenIcon,
   LockClosedIcon,
   EnvelopeIcon,
   FolderArrowDownIcon,
+  WalletIcon,
 } from '@heroicons/react/24/solid';
 
 import Dialog from './Dialog.js';
 import SendForm from './SendForm.js';
-import SetupWizard from './SetupWizard.js';
+import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 
 import { byChain, defaultChain } from '../contracts.js';
 
-export default function Toolbar({ sesh, setSesh }) {
+export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
+  const account = useAccount();
+  const connectModal = useConnectModal();
+  const accountModal = useAccountModal();
+
   const [showSend, setShowSend] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
   const [showMenu, setShowMenu] = useState(0);
   const menuRef = useRef(null);
 
   const menu = {
     Wallet: [
       {
-        label: 'Transfer...',
+        label: 'Transfer Tokens...',
         onClick: () => setShowSend(true),
         disabled: !sesh,
       },
@@ -40,6 +55,16 @@ export default function Toolbar({ sesh, setSesh }) {
         label: 'Log Out',
         onClick: () => setSesh(null),
         disabled: !sesh,
+      },
+      { sep: true },
+      {
+        label: account.isConnected ? `Connected as ${account.address.slice(0,8)}...` : 'Connect Wallet...',
+        onClick: () => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal(),
+      },
+      {
+        label: 'Save Public Key to Registry...',
+        onClick: () => setShowSaveToRegistry(true),
+        disabled: !sesh || !account.isConnected,
       },
     ],
     Help: [
@@ -146,7 +171,7 @@ export default function Toolbar({ sesh, setSesh }) {
           onClick={() => sesh.download()}
         >
           <FolderArrowDownIcon className="h-8 w-8 block" />
-          Export Session
+          Export
         </button>
 
         <button
@@ -166,6 +191,14 @@ export default function Toolbar({ sesh, setSesh }) {
           )}
         </button>
         {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup }} />}
+        <SaveToRegistry {...{sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
+        <button
+          className="wallet"
+          onClick={() => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal()}
+        >
+          <WalletIcon className="h-8 w-8 block" />
+          {account.isConnected ? account.address.slice(0,8) + '...' : 'Wallet'}
+        </button>
       </div>
     </>
   );
