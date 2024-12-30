@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const data = new Array(1000).fill(0).map((_, i) => ({
   address: '0x2c35714c1df8069856e41e7b75b2270929b6459c',
@@ -13,6 +13,7 @@ export default function TokenTable({ sesh }) {
   const [isDown, setIsDown] = useState(false);
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const menuRef = useRef(null);
 
   function handleSort(key) {
     const newOrder = sortKey === key && sortOrder === 'asc' ? 'desc' : 'asc';
@@ -26,8 +27,22 @@ export default function TokenTable({ sesh }) {
     });
   }
 
+  useEffect(() => {
+    function handleOutsideMove(event) {
+      if (menuRef.current && (!menuRef.current.contains(event.target) || menuRef.current === event.target)) {
+        setIsDown(false);
+      }
+    }
+
+    document.addEventListener('mousemove', handleOutsideMove);
+
+    return () => {
+      document.removeEventListener('mousemove', handleOutsideMove);
+    };
+  }, []);
+
   return (
-    <div className="panel">
+    <div className="panel" ref={menuRef}>
       <table cellPadding="0">
         <thead>
           <tr>

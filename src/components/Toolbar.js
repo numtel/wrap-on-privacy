@@ -92,10 +92,7 @@ export default function Toolbar({ sesh, setSesh }) {
           <button
             key={index}
             className={`${showMenu === index + 1 ? 'active' : ''}`}
-            onClick={() => {
-              console.log('cli',showMenu === index + 1 ? 0 : index + 1);
-              setShowMenu(showMenu === index + 1 ? 0 : index + 1);
-            }}
+            onClick={() => setShowMenu(showMenu === index + 1 ? 0 : index + 1)}
             onMouseOver={overMenu(index + 1)}
           >
             {key}
