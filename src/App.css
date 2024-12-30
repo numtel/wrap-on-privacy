@@ -50,7 +50,7 @@ p { margin-bottom:15px; }
 .toolbar>button:disabled {border: 1px solid #0000;color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff;}
 .toolbar>button:disabled>svg {color:#b5b5b5; }
 
-.menubar {}
+.menubar {background:url(/throb.gif) no-repeat top right #ddd; background-size: contain;}
 .menubar>button { padding:3px 5px; position:relative;}
 .menubar>button.active {border:1px inset #fff;}
 .menubar .menu {border: 1px outset #fff; border-radius:2px; box-shadow:inset 0 -1px 2px #666, inset 0 1px 2px #fff, 1px 1px 20px #0004; padding:8px 2px 8px 2px;top:33px; left:0px; position:absolute; margin:0; width:fit-content; min-width:100px; z-index:999;}
