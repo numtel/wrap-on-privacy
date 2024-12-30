@@ -32,7 +32,7 @@ export default function Toolbar({ sesh, setSesh }) {
         disabled: !sesh,
       },
       {
-        label: 'Log In',
+        label: 'Log In...',
         onClick: () => setShowSetup(true),
         disabled: sesh,
       },

@@ -5,7 +5,7 @@
 /* FA icons flash huge on page load? */
 .svg-inline--fa { max-height: 1rem; }
 
-body { background: #fff; user-select:none;}
+body { background: #ddd; user-select:none;}
 dialog {margin-top:140px; width:100%; max-width:720px; min-width:320px; user-select:none; background: #ddd; padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px #0005; border: 2px outset #fff;}
 dialog>h2 { padding: 5px 10px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, #009 0%, #9cf 100%); color:#fff; border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
 dialog>.close {position:absolute; top:2px; right:-8px; border-radius:3px 5px 3px 3px; height:2.15rem;}
@@ -59,9 +59,11 @@ p { margin-bottom:15px; }
 .menubar .menu button:hover:not(:disabled) {background:#006; color:#fff;}
 .menubar .menu button:disabled {color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff;}
 
+.status-bar {display:flex; flex-direction:row;background:#ddd;box-shadow:inset 0 -1px 2px #666, inset 0 1px 2px #fff; border-top:1px solid #333; padding:3px;}
+.status-bar>div { padding:0px 5px; border:2px inset #fff; flex:1;}
 
 
-.panel { overflow:auto; height:calc(100vh - 140px); }
+.panel { overflow:auto; height:calc(100vh - 171px);  background:#fff;}
 table {width:100%;}
 th { position:sticky; top:0px; }
 th span { display:block; padding: 1px 4px; background:#ddd; border: 2px outset #fff; text-wrap:nowrap;}

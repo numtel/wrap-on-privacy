@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 
 import WalletWrapper from "./components/WalletWrapper.js";
 import Toolbar from './components/Toolbar.js';
+import StatusBar from './components/StatusBar.js';
 import TokenTable from './components/TokenTable.js';
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
         <div className="top-border" />
         <Toolbar {...{sesh, setSesh}} />
         <TokenTable {...{sesh}} />
+        <StatusBar {...{sesh}} />
       </div>
     </WalletWrapper>
   </>);
