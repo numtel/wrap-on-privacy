@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useRef, useState, useEffect} from 'react';
 import { toast } from 'react-hot-toast';
 import {
   useAccount,
@@ -14,6 +14,13 @@ import Dialog from './Dialog.js';
 
 export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) {
   const [step, setStep] = useState(PrivateTokenSession.hasLocalStorage() ? -1 : 0);
+  const primaryInputRef = useRef(null);
+
+  useEffect(() => {
+    if (primaryInputRef.current) {
+      primaryInputRef.current.focus();
+    }
+  }, [step]);
   return (<Dialog show={showSetup} setShow={setShowSetup}>
     {step === -1 && <Login {...{sesh, setSesh, setStep}} />}
     {step === 3 && <SaveToRegistry {...{sesh, setSesh, setStep}} />}
@@ -38,7 +45,7 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) 
           <button className="button" type="button" onClick={() => setStep(-1)}>
             Login
           </button>}
-        <button className="button" onClick={() => setStep(2)}>
+        <button ref={primaryInputRef} className="button" onClick={() => setStep(2)}>
           Next &gt;
         </button>
       </div>
@@ -48,6 +55,14 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) 
 
 function Login({sesh, setSesh, setStep}) {
   const [newPw, setNewPw] = useState('');
+  const passwordInputRef = useRef(null);
+
+  useEffect(() => {
+    // Focus the password input when the component mounts
+    if (passwordInputRef.current) {
+      passwordInputRef.current.focus();
+    }
+  }, []);
 
   async function onNext(event) {
     event.preventDefault();
@@ -56,7 +71,7 @@ function Login({sesh, setSesh, setStep}) {
       toast.success('Login Successful!');
     } catch(error) {
       console.error(error);
-      toast.error(error.message);
+      toast.error('Login Failed!');
       return;
     }
   }
@@ -70,7 +85,12 @@ function Login({sesh, setSesh, setStep}) {
           <p>Please input your password to decrypt the session, or click 'Reset Session' to begin a new session.</p>
           <label className="text">
             <span>Password:</span>
-            <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
+            <input
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              ref={passwordInputRef}
+            />
           </label>
         </div>
       </div>
@@ -119,6 +139,14 @@ function ImportSession({sesh, setStep}) {
 function SetPassword({sesh, setSesh, setStep}) {
   const [newPw, setNewPw] = useState('');
   const [downloadSesh, setDownloadSesh] = useState(true);
+  const primaryInputRef = useRef(null);
+
+  useEffect(() => {
+    if (primaryInputRef.current) {
+      primaryInputRef.current.focus();
+    }
+  }, []);
+
   async function onNext(event) {
     event.preventDefault();
     try {
@@ -151,7 +179,7 @@ function SetPassword({sesh, setSesh, setStep}) {
           {PrivateTokenSession.hasLocalStorage() && <p className="text-red-800">Clicking next will overwrite the existing session in your local storage.</p>}
           <label className="text">
             <span>New password:</span>
-            <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
+            <input ref={primaryInputRef} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
           </label>
           <label className="radio">
             <input type="checkbox" checked={downloadSesh} onChange={e => setDownloadSesh(e.target.checked)} />
@@ -165,7 +193,7 @@ function SetPassword({sesh, setSesh, setStep}) {
           &lt; Back
         </button>
         <button className="button" disabled={!newPw}>
-          Next &gt;
+          Create new Private Wallet
         </button>
       </div>
     </form>

@@ -14,7 +14,7 @@ export function App() {
     <WalletWrapper>
       <Toaster />
       <div id="main">
-        <div className="topBorder" />
+        <div className="top-border" />
         <Toolbar {...{sesh, setSesh}} />
         <TokenTable {...{sesh}} />
       </div>

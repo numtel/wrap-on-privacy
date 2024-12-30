@@ -6,15 +6,15 @@
 .svg-inline--fa { max-height: 1rem; }
 
 body { background: #fff; user-select:none;}
-dialog {margin-top:140px; width:100%; max-width:720px; min-width:320px; user-select:none; background: #ddd; padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px #fff5; border: 2px outset;}
-dialog>h2 { padding: 5px 20px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, #009 0%, #9cf 100%); color:#fff; border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
-dialog>.close {position:absolute; top:2px; right:-5px; border-radius:3px; height:2rem;}
+dialog {margin-top:140px; width:100%; max-width:720px; min-width:320px; user-select:none; background: #ddd; padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px #0005; border: 2px outset #fff;}
+dialog>h2 { padding: 5px 10px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, #009 0%, #9cf 100%); color:#fff; border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
+dialog>.close {position:absolute; top:2px; right:-8px; border-radius:3px 5px 3px 3px; height:2.15rem;}
 
 #connect { position: absolute; top: 14px; right: 10px; }
 #main { }
-#main>.topBorder {background: linear-gradient(90deg, #009 0%, #9cf 100%); height:4px;}
+#main>.top-border {background: linear-gradient(90deg, #009 0%, #9cf 100%); height:4px;}
 
-fieldset { border: 2px inset; border-radius: 2px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
+fieldset { border: 2px inset #fff; border-radius: 3px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
 legend { padding: 3px; }
 label.radio { display: inline-block; padding: 4px; margin: 6px; }
 label.radio input { margin-right: 5px; }
@@ -22,36 +22,46 @@ label.radio:active { outline:1px dotted #000; }
 
 label.text { display: block; }
 label.text span { display: block; }
-label.text input { border: 1px inset; border-radius: 2px; padding: 5px; width:100%; }
+label.text input { border: 2px inset #fff; border-radius: 3px; padding: 5px; width:100%; }
 
-.button { padding: 5px 8px; border-radius: 2px; background:#ddd; border: 2px outset; margin: 0 10px; }
-.button:active { border: 2px inset; }
+.button { padding: 5px 8px; border-radius: 3px; background:#ddd; border: 2px outset #fff; margin: 0 10px; }
+.button:active { border: 2px inset #fff; }
 .button:hover { background:#eee; }
 .button:disabled { background: #ddd; color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff; border: 2px outset; }
 
 .link { text-decoration:underline; color:#009; }
 .link:hover { color:#03f; }
 
-.banner { border:2px inset; background:url(/world.png) no-repeat bottom center #2bc; background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }
+.banner { border:2px inset #fff; background:url(/world.png) no-repeat bottom center #2bc; background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }
 .banner.import { background-image:url(/spy.png);}
 .banner.registry { background-image:url(/contacts.png);}
 .banner.password { background-image:url(/lock.png);}
-.hr { border: 1px inset; margin:15px 0;  clear:both;}
+.hr { border: 1px inset #fff; margin:15px 0;  clear:both;}
 .controls { display:flex; flex-direction:row; justify-content:space-between;}
 
 p { margin-bottom:15px; }
 
 .toolbar {background: #ddd; display:flex; flex-direction:row; border-bottom:1px solid #222; box-shadow:inset 0 -1px 2px #666, inset 0 1px 2px #fff;}
 .toolbar .vr {border:2px outset; border-radius:2px; color:#fff;margin:5px;}
-.toolbar>button {padding: 10px; border: 1px solid #0000; margin:5px; display:flex; flex-direction:column; align-items:center;}
+.toolbar>button {padding: 10px; margin-left:0; border: 1px solid #0000; margin:5px; display:flex; flex-direction:column; align-items:center;}
 .toolbar>button>svg {color:#918;}
-.toolbar>button:hover {border: 1px outset;}
-.toolbar>button:active {border: 1px inset;}
+.toolbar>button:hover {border: 1px outset #fff;}
+.toolbar>button:active {border: 1px inset #fff;}
 .toolbar>button:disabled {border: 1px solid #0000;color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff;}
 .toolbar>button:disabled>svg {color:#b5b5b5; }
 
+.menubar {}
+.menubar>button { padding:3px 5px; position:relative;}
+.menubar>button.active {border:1px inset #fff;}
+.menubar .menu {border: 1px outset #fff; border-radius:2px; box-shadow:inset 0 -1px 2px #666, inset 0 1px 2px #fff, 1px 1px 20px #0004; padding:8px 2px 8px 2px;top:33px; left:0px; position:absolute; margin:0; width:fit-content; min-width:100px; z-index:999;}
+.menubar .menu.active {}
+.menubar .menu button {display:block; text-align:left; padding:2px 20px; width:100%;text-wrap:nowrap;}
+.menubar .menu button:hover:not(:disabled) {background:#006; color:#fff;}
+.menubar .menu button:disabled {color:#eee; text-shadow: -1px -1px #444, 1px 1px #fff;}
 
-.panel { overflow:auto; height:calc(100vh - 96px); }
+
+
+.panel { overflow:auto; height:calc(100vh - 140px); }
 table {width:100%;}
 th { position:sticky; top:0px; }
 th span { display:block; padding: 1px 4px; background:#ddd; border: 2px outset #fff; text-wrap:nowrap;}
