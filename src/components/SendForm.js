@@ -80,9 +80,15 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       }
       setLoading('Generating proof...');
       // mint into pool
-      const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId));
-      setLoading('Waiting for transaction...');
-      writeContract(tx);
+      try {
+        const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId));
+        setLoading('Waiting for transaction...');
+        writeContract(tx);
+      } catch(error) {
+        setLoading(null);
+        console.error(error);
+        toast.error('Error generating proof!');
+      }
 
     } else if(source === 'public' && recipType === 'public') {
       // standard erc20 transfer
@@ -107,7 +113,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
             <span>Address:</span>
             <input name="tokenAddr" value={inputTokenAddr} onChange={e => setInputTokenAddr(e.target.value)} />
           </label>
-          <TokenDetails address={inputTokenAddr} {...{chainId}} />
+          <p><TokenDetails address={inputTokenAddr} {...{chainId}} /></p>
         </fieldset>
         <fieldset>
           <legend>Source</legend>
@@ -139,13 +145,13 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
             <span>Address or ENS name:</span>
             <input name="recipAddr" value={recipAddr} onChange={e => setReciptAddr(e)} />
           </label>
-          <button className="link" type="button" onClick={sendToSelf}>
+          <p><button className="link" type="button" onClick={sendToSelf}>
             Send to Self
-          </button>
+          </button></p>
         </fieldset>
       </div>
       <div className="controls">
-        <button disabled={!!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) || (source === 'private')} className="button" type="submit">
+        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) || (source === 'private')} className="button" type="submit">
           {loading || (source === 'public' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
         </button>
       </div>

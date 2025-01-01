@@ -13,6 +13,7 @@ dialog>.close {position:absolute; top:2px; right:-8px; border-radius:3px 5px 3px
 
 fieldset { border: 2px inset #fff; border-radius: 3px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
 legend { padding: 3px; }
+fieldset p { margin:5px 0; }
 label.radio { display: inline-block; padding: 4px; margin: 6px; }
 label.radio input { margin-right: 5px; }
 label.radio:active { outline:1px dotted #000; }

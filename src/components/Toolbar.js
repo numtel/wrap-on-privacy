@@ -70,6 +70,12 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool })
         disabled: !sesh || !account.isConnected,
       },
     ],
+    View: [
+      {
+        label: 'Refresh',
+        onClick: () => setRefreshStatus(x => x+1),
+      }
+    ],
     Help: [
       {
         label: 'About',

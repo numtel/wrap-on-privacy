@@ -12,15 +12,15 @@ import TokenTable from './components/TokenTable.js';
 export function App() {
   const [sesh, setSesh] = useState(null);
   const [activePool, setActivePool] = useState(null);
-  const [refreshStatus, setRefreshStatus] = useState(0);
+  const [refreshCounter, setRefreshStatus] = useState(0);
   return (<>
     <WalletWrapper>
       <Toaster />
       <div id="main">
         <div className="top-border" />
         <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool}} />
-        <TokenTable {...{sesh, activePool, setActivePool}} />
-        <StatusBar {...{sesh}} refreshCounter={refreshStatus} />
+        <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />
+        <StatusBar {...{sesh, refreshCounter}} />
       </div>
     </WalletWrapper>
   </>);

@@ -1,10 +1,11 @@
+import {useState, useEffect} from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits, erc20Abi } from 'viem';
 
 import {byChain} from '../contracts.js';
 import abi from '../abi/PrivateToken.json';
 
-export default function TokenDetails({ address, chainId, amount, balanceOf, isPrivateBalance, symbol }) {
+export default function TokenDetails({ address, chainId, amount, balanceOf, isPrivateBalance, symbol, refreshCounter }) {
   const general = { address, abi: erc20Abi, chainId};
   const contracts = [
     { ...general, functionName: 'name',},
@@ -23,7 +24,12 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
         ],
       } : { ...general, functionName: 'balanceOf', args: [ balanceOf ] });
   }
-  const { data, isError, isLoading } = useReadContracts({contracts});
+  const { data, isError, isLoading, refetch } = useReadContracts({contracts});
+
+  useEffect(() => {
+    refetch();
+  }, [refreshCounter]);
+
   if(isLoading) return (
     <span>Loading...</span>
   );
@@ -44,12 +50,11 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
     }
   }
   if(data) return (<>
-    {amount !== undefined && formatUnits(amount, data[2].result)}&nbsp;
-    <a className="link" href={`${byChain[chainId].explorer}${address}`} target="_blank" rel="noreferrer">{ symbol ?
+    {amount !== undefined ? `${formatUnits(amount, data[2].result)} ${data[1].result}` : <a className="link" href={`${byChain[chainId].explorer}${address}`} target="_blank" rel="noreferrer">{ symbol ?
       data[1].result :
       <>{ data[0].result } ({data[1].result})</>
     }
-    </a>
+    </a>}
   </>);
 }
 
