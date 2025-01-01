@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {
   useAccount,
   useReadContracts,
@@ -8,11 +9,16 @@ import {
 import Dialog from './Dialog.js';
 
 export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
+  const account = useAccount();
+  const [sendAmount, setSendAmount] = useState(0);
+  const [recipAddr, setRecipAddr] = useState('');
+
   async function handleSubmit(event) {
     event.preventDefault();
   }
 
   function sendToSelf() {
+    account && setRecipAddr(account.address);
   }
 
   return (<Dialog show={showSend} setShow={setShowSend}>
@@ -46,7 +52,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
           </label>
           <label className="text">
             <span>Address or ENS name:</span>
-            <input name="recipAddr" />
+            <input name="recipAddr" value={recipAddr} onChange={e => setReciptAddr(e)} />
           </label>
           <button className="link" type="button" onClick={sendToSelf}>
             Send to Self

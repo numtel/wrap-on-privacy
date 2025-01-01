@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/solid';
 
 import Dialog from './Dialog.js';
+import AboutForm from './AboutForm.js';
 import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 
@@ -27,6 +28,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
 
+  const [showAbout, setShowAbout] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
@@ -70,7 +72,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
     Help: [
       {
         label: 'About',
-        onClick: () => alert('foo'),
+        onClick: () => setShowAbout(true),
       },
     ],
   };
@@ -157,6 +159,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
           <EnvelopeIcon className="h-8 w-8 block" />
           Transfer
         </button>
+        <AboutForm {...{ setShowAbout, showAbout }} />
         {showSend && (
           <SendForm
             {...{ sesh, setShowSend, showSend }}
