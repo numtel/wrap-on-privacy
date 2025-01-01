@@ -18,9 +18,7 @@ export default function StatusBar({ sesh, refreshCounter }) {
       args: [ account.address ],
     },
   ];
-  const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({
-    contracts,
-  });
+  const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts});
 
   useEffect(() => {
     refetch();

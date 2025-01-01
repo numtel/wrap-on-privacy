@@ -32,8 +32,16 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
   );
   if(data && balanceOf) {
     // TODO support private balances, message when not logged into this account
-    console.log(data[3].result);
-    amount = data[3].result;
+    if(isPrivateBalance) {
+      if(data[3].result[0] === 0n) {
+        amount = 0;
+      } else {
+        console.log(data[3].result);
+        amount = 777;
+      }
+    } else {
+      amount = data[3].result;
+    }
   }
   if(data) return (<>
     {amount !== undefined && formatUnits(amount, data[2].result)}&nbsp;

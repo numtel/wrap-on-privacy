@@ -94,11 +94,11 @@ export default function GenericSortableTable({
                 handleActiveChange(rowIndex);
               }}
             >
-              {columns.map((col) => {
+              {columns.map((col, colIndex) => {
                 // If the column definition includes a custom render function, use it
                 if (typeof col.render === 'function') {
                   return (
-                    <td key={col.key}>
+                    <td key={colIndex}>
                       {col.render(row)}
                     </td>
                   );

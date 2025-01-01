@@ -11,7 +11,8 @@ import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 export default function LoadActiveTokenCount({ sesh, setActivePool }) {
-  const {address, chainId} = useAccount();
+  const account = useAccount();
+  const chainId = account.chainId || defaultChain;
   const [tokenCount, setTokenCount] = useState(0);
   const contracts = [
     {
@@ -47,7 +48,7 @@ export default function LoadActiveTokenCount({ sesh, setActivePool }) {
 }
 
 function TokenTable({ sesh, setActivePool, data, chainId }) {
-  const {address} = useAccount();
+  const {address, isConnected} = useAccount();
 
   // Define columns for this table
   const columns = [
@@ -58,20 +59,20 @@ function TokenTable({ sesh, setActivePool, data, chainId }) {
         <TokenDetails symbol={true} address={item.address} {...{chainId}} />
       ),
     },
-    {
+    isConnected ? {
       key: 'address',
       label: 'Public Balance',
       render: (item) => (
         <TokenDetails symbol={true} balanceOf={address} address={item.address} {...{chainId}} />
       ),
-    },
-    {
+    } : null,
+    isConnected ? {
       key: 'address',
       label: 'Private Balance',
       render: (item) => (
         <TokenDetails symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId}} />
       ),
-    },
+    } : null,
     {
       key: 'address',
       label: 'Pool Size',
@@ -79,7 +80,7 @@ function TokenTable({ sesh, setActivePool, data, chainId }) {
         <TokenDetails symbol={true} balanceOf={byChain[chainId].PrivateToken} address={item.address} {...{chainId}} />
       ),
     },
-  ];
+  ].filter(x => x !== null);
 
   function handleRowSelection(index, rowData) {
     setActivePool(rowData ? rowData.address : null);

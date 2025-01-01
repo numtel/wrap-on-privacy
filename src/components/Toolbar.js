@@ -41,7 +41,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool })
       {
         label: 'Transfer Tokens...',
         onClick: () => setShowSend(true),
-        disabled: !sesh,
+        disabled: !sesh || !account.isConnected,
       },
       { sep: true },
       {
@@ -158,7 +158,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool })
         <div className="vr"></div>
         <button
           className="send"
-          disabled={!sesh}
+          disabled={!sesh || !account.isConnected}
           onClick={() => setShowSend(true)}
         >
           <EnvelopeIcon className="h-8 w-8 block" />
