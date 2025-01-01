@@ -1,6 +1,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faEthereum } from '@fortawesome/free-brands-svg-icons';
 
+import {byChain, defaultChain} from '../contracts.js';
 
 import Dialog from './Dialog.js';
 
@@ -13,7 +14,7 @@ export default function AboutForm({ setShowAbout, showAbout }) {
         <FontAwesomeIcon icon={faGithub} size="2xl" />
         View Project on Github
       </a>
-      <a href="https://sepolia.etherscan.io/address/0xd812358866b1b6a71eae3f38b5cfd72c1ba8ca3" className="link" rel="noopener" target="_blank">
+      <a href={`https://sepolia.etherscan.io/address/${byChain[defaultChain].PrivateToken}`} className="link" rel="noopener" target="_blank">
         <FontAwesomeIcon icon={faEthereum} size="2xl" />
         View Main Contract on Etherscan
       </a>

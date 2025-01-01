@@ -38,9 +38,9 @@ contract PrivateTokenTest is Test, IPrivateToken {
       uint(123),
       123,
       123,
-      privateAmount + 1,
       tokenAddr,
-      block.chainid
+      block.chainid,
+      privateAmount + 1
     ]) {
       revert TestError();
     } catch {
@@ -51,9 +51,9 @@ contract PrivateTokenTest is Test, IPrivateToken {
       uint(123),
       123,
       123,
-      privateAmount,
       tokenAddr,
-      block.chainid
+      block.chainid,
+      privateAmount
     ]);
 
     // Cannot re-use the same encryptedAmountSent as the mint above

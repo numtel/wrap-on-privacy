@@ -47,15 +47,19 @@ contract PrivateToken is IPrivateToken {
   }
 
   function mint(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPubMint] calldata _pubSignals) external {
+    uint sendAmount = _pubSignals[nPubMint-1];
+    uint chainId = _pubSignals[nPubMint-2];
+    uint tokenUint = _pubSignals[nPubMint-3];
+    address tokenAddr = address(uint160(tokenUint));
+
     if(!mintVerifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
       revert PrivateToken__InvalidProof();
     }
 
-    if(_pubSignals[nPubMint-1] != block.chainid) {
+    if(chainId != block.chainid) {
       revert PrivateToken__InvalidChainId();
     }
 
-    address tokenAddr = address(uint160(_pubSignals[nPubMint-2]));
     if(tokenIsLive[tokenAddr] == 0) {
       tokenIsLive[tokenAddr] = block.timestamp;
       liveTokens.push(tokenAddr);
@@ -67,11 +71,11 @@ contract PrivateToken is IPrivateToken {
     }
 
     uint256 receiveTxHash = hashMulti(encryptedSent);
-    encryptedSends[_pubSignals[nPubMint-2]].push(abi.encodePacked(encryptedSent));
-    sendTimes[_pubSignals[nPubMint-2]].push(block.timestamp);
-    sendTree[_pubSignals[nPubMint-2]]._insert(receiveTxHash);
+    encryptedSends[tokenUint].push(abi.encodePacked(encryptedSent));
+    sendTimes[tokenUint].push(block.timestamp);
+    sendTree[tokenUint]._insert(receiveTxHash);
 
-    IERC20(tokenAddr).transferFrom(msg.sender, address(this), _pubSignals[nPubMint-3]);
+    IERC20(tokenAddr).transferFrom(msg.sender, address(this), sendAmount);
   }
 
   function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[nPub] calldata _pubSignals) external {
