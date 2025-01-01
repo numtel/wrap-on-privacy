@@ -2,20 +2,45 @@ import {useState, useRef, useEffect} from 'react';
 import { toast } from 'react-hot-toast';
 import {
   useAccount,
+  useWalletClient,
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
+import {erc20Abi} from 'viem';
 
+import {byChain, defaultChain} from '../contracts.js';
 import Dialog from './Dialog.js';
+import TokenDetails from './TokenDetails.js';
 
 export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
   const account = useAccount();
+  const walletClient = useWalletClient({ chainId });
   const [loading, setLoading] = useState(null);
   const [sendAmount, setSendAmount] = useState('0');
   const [recipAddr, setRecipAddr] = useState('');
+  const [inputTokenAddr, setInputTokenAddr] = useState(tokenAddr);
   const [source, setSource] = useState('private');
   const [recipType, setRecipType] = useState('private');
+  const { data: balanceData, isError: readError, isLoading: reading, isSuccess: readSuccess, refetch } = useReadContracts({
+    contracts: [
+      {
+        abi: erc20Abi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'balanceOf',
+        args: [ account.address ]
+      },
+      {
+        abi: erc20Abi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'allowance',
+        args: [ account.address, byChain[defaultChain].PrivateToken ]
+      },
+      sesh.balanceViewTx(inputTokenAddr, chainId),
+    ],
+  });
   const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
   const primaryInputRef = useRef(null);
@@ -34,7 +59,8 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
     } else if(data && txPending) {
       toast.loading('Waiting for transaction...');
     } else if(data && txSuccess) {
-      toast.success('Transfer Successful!');
+      toast.success('Transaction Successful!');
+      refetch();
       setLoading(null);
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
@@ -42,10 +68,19 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
   async function handleSubmit(event) {
     event.preventDefault();
     if(source === 'public' && recipType === 'private') {
+      if(sendAmount > balanceData[1].result) {
+        writeContract({
+          abi: erc20Abi,
+          chainId,
+          address: inputTokenAddr,
+          functionName: 'approve',
+          args: [ byChain[defaultChain].PrivateToken, sendAmount ]
+        });
+        return;
+      }
       setLoading('Generating proof...');
       // mint into pool
-      const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(tokenAddr), BigInt(chainId));
-      console.log(tx);
+      const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId));
       setLoading('Waiting for transaction...');
       writeContract(tx);
 
@@ -65,7 +100,15 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
   return (<Dialog show={showSend} setShow={setShowSend}>
     <h2>Transfer Tokens</h2>
     <form onSubmit={handleSubmit}>
-      <div className="flex flex-col mb-4 sm:flex-row sm:space-x-4 justify-evenly sm:space-y-0 space-y-4">
+      <div className="flex flex-col mb-4  space-y-4">
+        <fieldset>
+          <legend>Token</legend>
+          <label className="text">
+            <span>Address:</span>
+            <input name="tokenAddr" value={inputTokenAddr} onChange={e => setInputTokenAddr(e.target.value)} />
+          </label>
+          <TokenDetails address={inputTokenAddr} {...{chainId}} />
+        </fieldset>
         <fieldset>
           <legend>Source</legend>
           <label className="radio">
@@ -80,6 +123,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" min="0" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
+          <p>Max: {balanceData ? source === 'public' ? balanceData[0].result.toString() : 'xxx' : 'Loading...'}</p>
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>
@@ -101,8 +145,8 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         </fieldset>
       </div>
       <div className="controls">
-        <button disabled={!!loading} className="button" type="submit">
-          {loading || 'Send'}
+        <button disabled={!!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) || (source === 'private')} className="button" type="submit">
+          {loading || (source === 'public' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
         </button>
       </div>
     </form>

@@ -14,7 +14,7 @@ export default function AboutForm({ setShowAbout, showAbout }) {
         <FontAwesomeIcon icon={faGithub} size="2xl" />
         View Project on Github
       </a>
-      <a href={`https://sepolia.etherscan.io/address/${byChain[defaultChain].PrivateToken}`} className="link" rel="noopener" target="_blank">
+      <a href={`${byChain[defaultChain].explorer}${byChain[defaultChain].PrivateToken}`} className="link" rel="noopener" target="_blank">
         <FontAwesomeIcon icon={faEthereum} size="2xl" />
         View Main Contract on Etherscan
       </a>

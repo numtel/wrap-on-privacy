@@ -18,6 +18,7 @@ import registryAbi from './abi/KeyRegistry.json';
 import {byChain} from'./contracts.js';
 
 export const SESH_KEY = 'private-token-session';
+const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
 
 export default class PrivateTokenSession {
   constructor(options) {
@@ -83,13 +84,21 @@ export default class PrivateTokenSession {
   balanceKeypair() {
     const {ntru} = this;
     // privkey for balance symmetric encryption is packed+summed f
-    const privKeyPacked = packOutput(4, ntru.N, receiveDecrypted.inputs.f.map(x=>x===ntru.q-1 ? 2 : x));
+    const privKeyPacked = packOutput(4, ntru.N, ntru.f.map(x=>x===-1 ? 2 : x));
     const privateKey = privKeyPacked.expected.reduce((sum, cur) => sum + cur, 0n) % SNARK_FIELD_SIZE;
-    const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
     // pubkey for encrypted balance storage is hash of the packed f
     const publicKey = calcMultiHash(privKeyPacked.expected);
 
     return {publicKey, privateKey};
+  }
+  balanceViewTx(tokenAddr, chainId) {
+    return {
+      abi,
+      chainId,
+      address: byChain[chainId].PrivateToken,
+      functionName: 'accounts',
+      args: [tokenAddr, this.balanceKeypair().publicKey],
+    };
   }
   registerTx(chainId) {
     const {ntru} = this;

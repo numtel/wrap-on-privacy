@@ -24,7 +24,7 @@ import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
 
-export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
+export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool }) {
   const account = useAccount();
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
@@ -168,7 +168,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
         {showSend && (
           <SendForm
             {...{ sesh, setShowSend, showSend }}
-            tokenAddr={byChain[defaultChain].MockERC20}
+            tokenAddr={activePool}
             chainId={defaultChain}
           />
         )}

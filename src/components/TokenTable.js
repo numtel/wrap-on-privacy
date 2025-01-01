@@ -1,105 +1,96 @@
-import { useEffect, useState, useRef } from 'react';
+import {useState, useEffect} from 'react';
 
-const data = new Array(1000).fill(0).map((_, i) => ({
-  address: '0x2c35714c1df8069856e41e7b75b2270929b6459c',
-  name: `MockERC20 #${i + 1}`,
-  pubBalance: i * 3,
-  privBalance: (i * 4) % 332,
-  poolSize: 382938,
-}));
+import {
+  useAccount,
+  useReadContracts,
+} from 'wagmi';
 
-export default function TokenTable({ sesh }) {
-  const [active, setActive] = useState(null);
-  const [isDown, setIsDown] = useState(false);
-  const [sortKey, setSortKey] = useState(null);
-  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
-  const menuRef = useRef(null);
+import GenericSortableTable from './SortableTable.js';
+import TokenDetails from './TokenDetails.js';
+import abi from '../abi/PrivateToken.json';
+import {byChain, defaultChain} from '../contracts.js';
 
-  function handleSort(key) {
-    const newOrder = sortKey === key && sortOrder === 'asc' ? 'desc' : 'asc';
-    setSortKey(key);
-    setSortOrder(newOrder);
+export default function LoadActiveTokenCount({ sesh, setActivePool }) {
+  const {address, chainId} = useAccount();
+  const [tokenCount, setTokenCount] = useState(0);
+  const contracts = [
+    {
+      abi,
+      chainId,
+      address: byChain[chainId].PrivateToken,
+      functionName: 'tokenCount',
+    },
+    ...(new Array(tokenCount).fill(0).map((_, i) => [
+      {
+        abi,
+        chainId,
+        address: byChain[chainId].PrivateToken,
+        functionName: 'liveTokens',
+        args: [ i ],
+      },
+    ])).flat(),
+  ];
+  const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts});
+  useEffect(() => {
+    if(data && data[0].result !== tokenCount) {
+      setTokenCount(data[0].result);
+    }
+  }, [data]);
 
-    data.sort((a, b) => {
-      if (a[key] < b[key]) return newOrder === 'asc' ? -1 : 1;
-      if (a[key] > b[key]) return newOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
+  if(tokenCount && data) return (<TokenTable {...{sesh, setActivePool, chainId}} data={data.slice(1).map(x=>({address: x.result }))} />);
+  return (
+    <GenericSortableTable
+      columns={[{key:'x', label: ''}]}
+      data={[{x:isLoading ? 'Loading...' : isError ? 'Error!' : 'No active pools!'}]}
+    />
+  );
+}
+
+function TokenTable({ sesh, setActivePool, data, chainId }) {
+  const {address} = useAccount();
+
+  // Define columns for this table
+  const columns = [
+    {
+      key: 'address',
+      label: 'Token',
+      render: (item) => (
+        <TokenDetails symbol={true} address={item.address} {...{chainId}} />
+      ),
+    },
+    {
+      key: 'address',
+      label: 'Public Balance',
+      render: (item) => (
+        <TokenDetails symbol={true} balanceOf={address} address={item.address} {...{chainId}} />
+      ),
+    },
+    {
+      key: 'address',
+      label: 'Private Balance',
+      render: (item) => (
+        <TokenDetails symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId}} />
+      ),
+    },
+    {
+      key: 'address',
+      label: 'Pool Size',
+      render: (item) => (
+        <TokenDetails symbol={true} balanceOf={byChain[chainId].PrivateToken} address={item.address} {...{chainId}} />
+      ),
+    },
+  ];
+
+  function handleRowSelection(index, rowData) {
+    setActivePool(rowData ? rowData.address : null);
   }
 
-  useEffect(() => {
-    function handleOutsideMove(event) {
-      if (menuRef.current && (!menuRef.current.contains(event.target) || menuRef.current === event.target)) {
-        setIsDown(false);
-      }
-    }
-
-    document.addEventListener('mousemove', handleOutsideMove);
-
-    return () => {
-      document.removeEventListener('mousemove', handleOutsideMove);
-    };
-  }, []);
-
   return (
-    <div className="panel" ref={menuRef}>
-      <table cellPadding="0">
-        <thead>
-          <tr>
-            <th><span onClick={() => handleSort('address')}>Address</span></th>
-            <th><span onClick={() => handleSort('name')}>Name</span></th>
-            <th><span onClick={() => handleSort('pubBalance')}>Public Balance</span></th>
-            <th><span onClick={() => handleSort('privBalance')}>Private Balance</span></th>
-            <th><span onClick={() => handleSort('poolSize')}>Pool Size</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item, i) => (
-            <tr
-              key={i}
-              className={active === i ? 'active' : ''}
-              onMouseDown={() => {
-                setIsDown(true);
-                setActive(i);
-              }}
-              onMouseMove={() => {
-                if (isDown) setActive(i);
-              }}
-              onMouseUp={() => {
-                setIsDown(false);
-                setActive(i);
-              }}
-              onTouchStart={() => {
-                setIsDown(true);
-                setActive(i);
-              }}
-              onTouchMove={() => {
-                if (isDown) setActive(i);
-              }}
-              onTouchEnd={() => {
-                setIsDown(false);
-                setActive(i);
-              }}
-            >
-              <td>
-                <a
-                  href={`https://sepolia.etherscan.io/address/${item.address}`}
-                  target="_blank"
-                  rel="noopener"
-                  className="link"
-                >
-                  {item.address}
-                </a>
-              </td>
-              <td>{item.name}</td>
-              <td>{item.pubBalance}</td>
-              <td>{item.privBalance}</td>
-              <td>{item.poolSize}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <GenericSortableTable
+      columns={columns}
+      data={data}
+      onActiveChange={handleRowSelection}
+    />
   );
 }
 

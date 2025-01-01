@@ -42,6 +42,10 @@ contract PrivateToken is IPrivateToken {
     return encryptedSends[uint256(uint160(token))].length;
   }
 
+  function tokenCount() external view returns (uint256) {
+    return liveTokens.length;
+  }
+
   function treeRoot(address token) external view returns (uint256) {
     return sendTree[uint256(uint160(token))]._root();
   }
