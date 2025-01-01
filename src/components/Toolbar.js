@@ -21,6 +21,7 @@ import AboutForm from './AboutForm.js';
 import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 
+import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
 
 export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
@@ -84,6 +85,10 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus }) {
   }, [sesh]);
 
   useEffect(() => {
+    if(!sesh && PrivateTokenSession.hasLocalStorage()) {
+      setShowSetup(true);
+    }
+
     function handleOutsideClick(event) {
       if (menuRef.current && (!menuRef.current.contains(event.target) || menuRef.current === event.target)) {
         setShowMenu(0);
