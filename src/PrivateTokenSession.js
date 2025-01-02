@@ -1,3 +1,4 @@
+import { getContract } from 'viem';
 import { groth16 } from 'snarkjs';
 import { poseidon2 } from 'poseidon-lite';
 import NTRU, {
@@ -31,6 +32,7 @@ export default class PrivateTokenSession {
         dg: 2,
         dr: 2,
       },
+      scanCounts: {},
     }, options);
 
     this.ntru = new NTRU(this.ntru);
@@ -79,7 +81,19 @@ export default class PrivateTokenSession {
     ntru.h = toRaw.unpacked;
     return ntru;
   }
-  scanForIncoming() {
+  async scanForIncoming(client, tokenAddr, chainId) {
+    const contract = getContract({
+      client,
+      abi,
+      address: byChain[chainId].PrivateToken,
+    });
+    const count = Number(await contract.read.sendCount([tokenAddr]));
+    if(!(chainId in this.scanCounts)) this.scanCounts[chainId] = {};
+    const oldCount = tokenAddr in this.scanCounts[chainId] ? this.scanCounts[chainId][tokenAddr] : 0;
+    return { count, oldCount };
+  }
+  setLastScanned(tokenAddr, chainId, count) {
+    this.scanCounts[chainId][tokenAddr] = count;
   }
   balanceKeypair() {
     const {ntru} = this;

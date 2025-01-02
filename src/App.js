@@ -8,6 +8,7 @@ import WalletWrapper from "./components/WalletWrapper.js";
 import Toolbar from './components/Toolbar.js';
 import StatusBar from './components/StatusBar.js';
 import TokenTable from './components/TokenTable.js';
+import IncomingTable from './components/IncomingTable.js';
 
 export function App() {
   const [sesh, setSesh] = useState(null);
@@ -19,8 +20,11 @@ export function App() {
       <div id="main">
         <div className="top-border" />
         <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool}} />
-        <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />
-        <StatusBar {...{sesh, refreshCounter}} />
+        <div className="panel">
+          <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />
+          <IncomingTable {...{sesh, activePool, refreshCounter}} />
+        </div>
+        <StatusBar {...{sesh, refreshCounter, activePool}} />
       </div>
     </WalletWrapper>
   </>);

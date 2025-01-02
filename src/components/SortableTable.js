@@ -54,63 +54,61 @@ export default function GenericSortableTable({
   }, []);
 
   return (
-    <div className="panel" ref={menuRef}>
-      <table cellPadding="0">
-        <thead>
-          <tr>
-            {columns.map((col, index) => (
-              <th key={index} onClick={() => handleSort(col.key)}>
-                <span>{col.label}</span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sortedData.map((row, rowIndex) => (
-            <tr
-              key={rowIndex}
-              className={active === rowIndex ? 'active' : ''}
-              // Mouse / touch events
-              onMouseDown={() => {
-                setIsDown(true);
-                handleActiveChange(rowIndex);
-              }}
-              onMouseMove={() => {
-                if (isDown) handleActiveChange(rowIndex);
-              }}
-              onMouseUp={() => {
-                setIsDown(false);
-                handleActiveChange(rowIndex);
-              }}
-              onTouchStart={() => {
-                setIsDown(true);
-                handleActiveChange(rowIndex);
-              }}
-              onTouchMove={() => {
-                if (isDown) handleActiveChange(rowIndex);
-              }}
-              onTouchEnd={() => {
-                setIsDown(false);
-                handleActiveChange(rowIndex);
-              }}
-            >
-              {columns.map((col, colIndex) => {
-                // If the column definition includes a custom render function, use it
-                if (typeof col.render === 'function') {
-                  return (
-                    <td key={colIndex}>
-                      {col.render(row)}
-                    </td>
-                  );
-                }
-                // Otherwise, just show the raw cell data
-                return <td key={col.key}>{row[col.key]}</td>;
-              })}
-            </tr>
+    <table cellPadding="0" ref={menuRef}>
+      <thead>
+        <tr>
+          {columns.map((col, index) => (
+            <th key={index} onClick={() => handleSort(col.key)}>
+              <span>{col.label}</span>
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {sortedData.map((row, rowIndex) => (
+          <tr
+            key={rowIndex}
+            className={active === rowIndex ? 'active' : ''}
+            // Mouse / touch events
+            onMouseDown={() => {
+              setIsDown(true);
+              handleActiveChange(rowIndex);
+            }}
+            onMouseMove={() => {
+              if (isDown) handleActiveChange(rowIndex);
+            }}
+            onMouseUp={() => {
+              setIsDown(false);
+              handleActiveChange(rowIndex);
+            }}
+            onTouchStart={() => {
+              setIsDown(true);
+              handleActiveChange(rowIndex);
+            }}
+            onTouchMove={() => {
+              if (isDown) handleActiveChange(rowIndex);
+            }}
+            onTouchEnd={() => {
+              setIsDown(false);
+              handleActiveChange(rowIndex);
+            }}
+          >
+            {columns.map((col, colIndex) => {
+              // If the column definition includes a custom render function, use it
+              if (typeof col.render === 'function') {
+                return (
+                  <td key={colIndex}>
+                    {col.render(row)}
+                  </td>
+                );
+              }
+              // Otherwise, just show the raw cell data
+              return <td key={col.key}>{row[col.key]}</td>;
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
