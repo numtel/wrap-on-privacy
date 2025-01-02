@@ -24,7 +24,7 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
         ],
       } : { ...general, functionName: 'balanceOf', args: [ balanceOf ] });
   }
-  const { data, isError, isLoading, refetch } = useReadContracts({contracts});
+  const { data, isError, isLoading, refetch } = useReadContracts({contracts, watch:false});
 
   useEffect(() => {
     refetch();

@@ -31,7 +31,7 @@ export default function LoadActiveTokenCount({ sesh, setActivePool, refreshCount
       },
     ])).flat(),
   ];
-  const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts});
+  const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
   useEffect(() => {
     if(data && data[0].result !== tokenCount) {
       setTokenCount(Number(data[0].result));
