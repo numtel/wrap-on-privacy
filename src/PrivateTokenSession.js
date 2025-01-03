@@ -1,25 +1,27 @@
+import { LeanIMT } from "@zk-kit/imt";
 import { getContract } from 'viem';
 import { groth16 } from 'snarkjs';
 import { poseidon2 } from 'poseidon-lite';
 import NTRU, {
   bigintToBits,
+  bitsToBigInt,
   packOutput,
   unpackInput,
 } from 'ntru-circom';
 
 import {
-  poseidonDecrypt,
   genTree,
   getCalldata,
-  pubKey,
-  randomBigInt,
+  genRandomBabyJubValue,
+  SNARK_FIELD_SIZE,
+  symmetricEncrypt,
+  symmetricDecrypt,
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
 import registryAbi from './abi/KeyRegistry.json';
 import {byChain} from'./contracts.js';
 
 export const SESH_KEY = 'private-token-session';
-const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
 
 export default class PrivateTokenSession {
   constructor(options) {
@@ -32,7 +34,7 @@ export default class PrivateTokenSession {
         dg: 2,
         dr: 2,
       },
-      scanCounts: {},
+      incoming: {},
     }, options);
 
     this.ntru = new NTRU(this.ntru);
@@ -88,12 +90,117 @@ export default class PrivateTokenSession {
       address: byChain[chainId].PrivateToken,
     });
     const count = Number(await contract.read.sendCount([tokenAddr]));
-    if(!(chainId in this.scanCounts)) this.scanCounts[chainId] = {};
-    const oldCount = tokenAddr in this.scanCounts[chainId] ? this.scanCounts[chainId][tokenAddr] : 0;
+    if(!(chainId in this.incoming)) this.incoming[chainId] = {};
+    const oldCount = tokenAddr in this.incoming[chainId] ? this.incoming[chainId][tokenAddr].count : 0;
     return { count, oldCount };
   }
-  setLastScanned(tokenAddr, chainId, count) {
-    this.scanCounts[chainId][tokenAddr] = count;
+  decryptIncoming(encValue) {
+    // First need to calculate the maxOutputBits for a public key packing
+    const {ntru} = new PrivateTokenSession;
+
+    const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
+    const unpacked = splitHexToBigInt(encValue, 256);
+    // For small (test size) keys, the value is shorter than one element
+    const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
+    const decrypted = this.ntru.decryptBits(toRaw.unpacked);
+    const receiveTxHash = calcMultiHash(unpacked);
+
+    // TODO also add padding for more checking
+    // Invalid decryption
+    const failed = decrypted.value.some(x=>!(x===0 || x===1));
+
+    return {
+      value: failed ? null : bitsToBigInt(decrypted.value.slice().reverse()),
+      encBits: toRaw.unpacked,
+      receiveTxHash,
+      unpacked,
+    };
+  }
+  async receiveTx(tokenAddr, chainId, encBits, index, unpacked, client, userAddress, receiveAmount) {
+    const {ntru} = this;
+    const receiveDecrypted = ntru.decryptBits(encBits);
+    const verifyKeys = ntru.verifyKeysInputs();
+
+    const leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, index);
+
+    const contract = getContract({
+      client,
+      abi,
+      address: byChain[chainId].PrivateToken,
+    });
+    const account = await contract.read.accounts([tokenAddr, userAddress]);
+
+    const sendAmount = 0n;
+    // TODO send this zero amount to a zero (burn) pubkeyH
+    const sendEncrypted = ntru.encryptBits(bigintToBits(sendAmount));
+
+    const newBalanceNonce = genRandomBabyJubValue();
+    const {privateKey, publicKey} = this.balanceKeypair();
+    const test1 = symmetricEncrypt(12345n, privateKey, newBalanceNonce);
+    const test2 = symmetricDecrypt(test1, privateKey, newBalanceNonce);
+    const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
+    const finalBalance = symmetricEncrypt(
+      balance + BigInt(receiveAmount) - sendAmount,
+      privateKey,
+      newBalanceNonce
+    );
+
+    const inputs = {
+      tokenAddr,
+      chainId,
+      encryptedReceive: unpacked,
+      f: receiveDecrypted.inputs.f,
+      fp: receiveDecrypted.inputs.fp,
+      quotientFp: verifyKeys.fp.inputs.quotientI,
+      remainderFp: verifyKeys.fp.inputs.remainderI,
+      receiveQuotient1: receiveDecrypted.inputs.quotient1,
+      receiveRemainder1: receiveDecrypted.inputs.remainder1,
+      receiveQuotient2: receiveDecrypted.inputs.quotient2,
+      receiveRemainder2: receiveDecrypted.inputs.remainder2,
+      treeDepth,
+      treeIndices,
+      treeSiblings,
+      encryptedBalance: account[0],
+      balanceNonce: account[1],
+      newBalanceNonce,
+      sendAmount,
+      recipH: sendEncrypted.inputs.h,
+      sendR: sendEncrypted.inputs.r,
+      sendQuotient: sendEncrypted.inputs.quotientE,
+      sendRemainder: sendEncrypted.inputs.remainderE,
+      burnAddress: 0,
+      isBurn: 0,
+      isReceiving: 1,
+      // This value will not be output when it is receiving
+      nonReceivingTreeRoot: 0n,
+    };
+
+    const proof = await groth16.fullProve(
+      inputs,
+      'circuits/main/verify_circuit.wasm',
+      'circuits/main/groth16_pkey.zkey',
+    );
+
+    if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
+
+    const args = getCalldata(proof);
+    return {
+      abi,
+      address: byChain[chainId].PrivateToken,
+      functionName: 'verifyProof',
+      args,
+    };
+  }
+  async setLastScanned(tokenAddr, chainId, count, newItems) {
+    if(!(chainId in this.incoming)) this.incoming[chainId] = {};
+    if(!(tokenAddr in this.incoming[chainId])) {
+      this.incoming[chainId][tokenAddr] = { count, found: newItems };
+    } else {
+      this.incoming[chainId][tokenAddr].count = count;
+      newitems.forEach(item => this.incoming[chainId][tokenAddr].found.push(item));
+    }
+    await this.saveToLocalStorage();
   }
   balanceKeypair() {
     const {ntru} = this;
@@ -131,6 +238,7 @@ export default class PrivateTokenSession {
     const {ntru} = this;
     const encrypted = ntru.encryptBits(bigintToBits(sendAmount));
     const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
+    const decrypted = ntru.decryptBits(encrypted.value);
 
     const inputs = {
       tokenAddr,
@@ -225,7 +333,7 @@ function splitHexToBigInt(hexString, maxBits) {
         throw new TypeError('maxBits must be a positive integer.');
     }
 
-    let combinedBinary = BigInt('0x' + hexString).toString(2);
+    let combinedBinary = BigInt(hexString).toString(2);
     const totalBits = combinedBinary.length;
 
     // Pad combinedBinary with leading zeros if it doesn't align with maxBits

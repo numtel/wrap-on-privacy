@@ -22,7 +22,7 @@ export function App() {
         <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool}} />
         <div className="panel">
           <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />
-          <IncomingTable {...{sesh, activePool, refreshCounter}} />
+          {sesh && <IncomingTable {...{sesh, activePool, refreshCounter}} />}
         </div>
         <StatusBar {...{sesh, refreshCounter, activePool}} />
       </div>

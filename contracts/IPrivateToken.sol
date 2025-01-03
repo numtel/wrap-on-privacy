@@ -19,11 +19,11 @@ interface IPrivateToken {
     uint256 finalBalance;
     uint256 receiveNullifier;
     uint256[nO] encryptedAmountSent;
+    uint256 tokenAddr;
+    uint256 chainId;
     uint256 encryptedBalance;
     uint256 balanceNonce;
     uint256 newBalanceNonce;
-    uint256 tokenAddr;
-    uint256 chainId;
   }
 
   error PrivateToken__InvalidChainId();

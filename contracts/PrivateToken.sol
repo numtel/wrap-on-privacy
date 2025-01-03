@@ -20,6 +20,7 @@ contract PrivateToken is IPrivateToken {
   mapping(uint256 => LeanIMTData) sendTree;
   mapping(uint256 => bytes[]) public encryptedSends;
   mapping(uint256 => uint256[]) public sendTimes;
+  mapping(uint256 => address[]) public sendAccounts;
   // keyed by publicKey
   mapping(uint256 => mapping(uint256 => PrivateAccount)) public accounts;
   // keyed by receiveNullifier
@@ -77,6 +78,7 @@ contract PrivateToken is IPrivateToken {
     uint256 receiveTxHash = hashMulti(encryptedSent);
     encryptedSends[tokenUint].push(abi.encodePacked(encryptedSent));
     sendTimes[tokenUint].push(block.timestamp);
+    sendAccounts[tokenUint].push(msg.sender);
     sendTree[tokenUint]._insert(receiveTxHash);
 
     IERC20(tokenAddr).transferFrom(msg.sender, address(this), sendAmount);
@@ -133,6 +135,7 @@ contract PrivateToken is IPrivateToken {
       uint256 receiveTxHash = hashMulti(pubs.encryptedAmountSent);
       encryptedSends[pubs.tokenAddr].push(abi.encodePacked(pubs.encryptedAmountSent));
       sendTimes[pubs.tokenAddr].push(block.timestamp);
+      sendAccounts[pubs.tokenAddr].push(msg.sender);
       sendTree[pubs.tokenAddr]._insert(receiveTxHash);
     }
 

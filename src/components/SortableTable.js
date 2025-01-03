@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 
 export default function GenericSortableTable({
   columns = [],
   data = [],
   onActiveChange,
+  disallowSelection,
 }) {
   const [active, setActive] = useState(null);
   const [isDown, setIsDown] = useState(false);
@@ -20,12 +21,13 @@ export default function GenericSortableTable({
   }
 
   // Helper to update active state and call the callback
-  function handleActiveChange(index) {
+  const handleActiveChange = useCallback(index => {
+    if(disallowSelection) return;
     setActive(index);
     if (typeof onActiveChange === 'function') {
       onActiveChange(index, sortedData[index]);
     }
-  }
+  }, [disallowSelection, onActiveChange]);
 
   // Sort the data in a stable way (create a copy first)
   const sortedData = [...data].sort((a, b) => {
@@ -47,14 +49,26 @@ export default function GenericSortableTable({
       }
     }
 
+    function handleOutsideClick(event) {
+      if (menuRef.current === event.target) {
+        handleActiveChange(null);
+      }
+    }
+
     document.addEventListener('mousemove', handleOutsideMove);
+    document.addEventListener('click', handleOutsideClick);
     return () => {
       document.removeEventListener('mousemove', handleOutsideMove);
+      document.removeEventListener('click', handleOutsideClick);
     };
-  }, []);
+  }, [handleActiveChange]);
 
-  return (
-    <table cellPadding="0" ref={menuRef}>
+  useEffect(() => {
+    if(disallowSelection) setActive(null);
+  }, [disallowSelection]);
+
+  return (<div className="table-wrapper" ref={menuRef}>
+    <table cellPadding="0">
       <thead>
         <tr>
           {columns.map((col, index) => (
@@ -109,6 +123,6 @@ export default function GenericSortableTable({
         ))}
       </tbody>
     </table>
-  );
+  </div>);
 }
 

@@ -74,7 +74,7 @@ function TokenTable({ sesh, setActivePool, data, chainId, refreshCounter }) {
       key: 'address',
       label: 'Private Balance',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId, refreshCounter}} />
+        <TokenDetails symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId, refreshCounter, sesh}} />
       ),
     } : null,
     {

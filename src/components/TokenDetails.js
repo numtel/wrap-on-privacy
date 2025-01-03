@@ -4,8 +4,9 @@ import { formatUnits, erc20Abi } from 'viem';
 
 import {byChain} from '../contracts.js';
 import abi from '../abi/PrivateToken.json';
+import {symmetricDecrypt} from '../utils.js';
 
-export default function TokenDetails({ address, chainId, amount, balanceOf, isPrivateBalance, symbol, refreshCounter }) {
+export default function TokenDetails({ address, chainId, amount, balanceOf, isPrivateBalance, symbol, refreshCounter, sesh }) {
   const general = { address, abi: erc20Abi, chainId};
   const contracts = [
     { ...general, functionName: 'name',},
@@ -13,16 +14,11 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
     { ...general, functionName: 'decimals' },
   ];
   if(balanceOf) {
-    contracts.push(isPrivateBalance ?
-      {
-        address: byChain[chainId].PrivateToken,
-        abi,
-        functionName: 'accounts',
-        args: [
-          address,
-          balanceOf,
-        ],
-      } : { ...general, functionName: 'balanceOf', args: [ balanceOf ] });
+    if(isPrivateBalance && sesh) {
+      contracts.push(sesh.balanceViewTx(address, chainId));
+    } else if(!isPrivateBalance) {
+      contracts.push({ ...general, functionName: 'balanceOf', args: [ balanceOf ] });
+    }
   }
   const { data, isError, isLoading, refetch } = useReadContracts({contracts, watch:false});
 
@@ -39,11 +35,14 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
   if(data && balanceOf) {
     // TODO support private balances, message when not logged into this account
     if(isPrivateBalance) {
-      if(data[3].result[0] === 0n) {
+      if(data.length < 4) {
+        // Not logged in
+        amount = 0;
+      } else if(data[3].result[0] === 0n) {
         amount = 0;
       } else {
         console.log(data[3].result);
-        amount = 777;
+        amount = symmetricDecrypt(data[3].result[0], sesh.balanceKeypair().privateKey, data[3].result[1]);
       }
     } else {
       amount = data[3].result;

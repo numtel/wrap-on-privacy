@@ -1,55 +1,8 @@
-import {Scalar, ZqField} from "ffjavascript";
 import { LeanIMT } from "@zk-kit/imt";
 import { poseidon2 } from "poseidon-lite";
 
-const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
-const F = new ZqField(Scalar.fromString(SNARK_FIELD_SIZE.toString()));
-const BASE = F.e(2);
+export const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
 const MAX_DEPTH = 32;
-
-let lookupTable;
-
-export function elgamalDecrypt(privateKey, ephemeralKey, encryptedMessage) {
-  const maskingKey = F.pow(ephemeralKey, privateKey);
-  const decryptedMessage = F.div(encryptedMessage, maskingKey);
-  return decryptedMessage;
-}
-
-export function elgamalEncrypt(secret, publicKey, nonce) {
-  const encodedSecret = F.pow(BASE, secret);
-  const ephemeralKey = F.pow(BASE, nonce);
-  const maskingKey = F.pow(publicKey, nonce);
-  const encryptedMessage = F.mul(encodedSecret, maskingKey);
-  return { ephemeralKey, encryptedMessage };
-}
-
-export function elgamalDecode(decryptedMessage) {
-  if(!lookupTable) {
-    const list = [];
-    for(let i = 0; i <= 2**19; i++) {
-      list.push(F.pow(BASE, i));
-    }
-    lookupTable = list;
-  }
-  for(let i = 0; i < lookupTable.length; i++) {
-    if(decryptedMessage === lookupTable[i]) return i;
-  }
-  return null;
-}
-
-export function poseidonDecrypt(privateKey, nonce, ciphertext) {
-  const hash = poseidon2([ privateKey, nonce ]);
-  return F.sub(ciphertext, hash);
-}
-
-export function pubKey(priv) {
-  return F.pow(BASE, priv);
-}
-
-export function sigToKeyPair(signature) {
-  const priv = F.e(signature);
-  return { priv, pub: pubKey(priv) };
-}
 
 export function randomBigInt(bits) {
     const bytes = Math.ceil(bits / 8);
@@ -128,4 +81,49 @@ function groth16Calldata(proof) {
     `[[${withQuotes(pB0).join(', ')}], [${withQuotes(pB1).join(', ')}]]`,
     `[${withQuotes(pC).join(', ')}]`,
   ].join(',');
+}
+
+// From https://github.com/Shigoto-dev19/ec-elgamal-circom
+/**
+ * Returns a BabyJub-compatible random value. We create it by first generating
+ * a random value (initially 256 bits large) modulo the snark field size as
+ * described in EIP197. This results in a key size of roughly 253 bits and no
+ * more than 254 bits. To prevent modulo bias, we then use this efficient
+ * algorithm:
+ * http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/lib/libc/crypt/arc4random_uniform.c
+ * @return A BabyJub-compatible random value.
+ * @see {@link https://github.com/privacy-scaling-explorations/maci/blob/master/crypto/ts/index.ts}
+ */
+export function genRandomBabyJubValue() {
+    // Prevent modulo bias
+    //const lim = BigInt('0x10000000000000000000000000000000000000000000000000000000000000000')
+    //const min = (lim - SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
+    const min = BigInt(
+        "6350874878119819312338956282401532410528162663560392320966563075034087161851",
+    );
+
+    let rand;
+    while (true) {
+        const buffer = new Uint8Array(32);
+        crypto.getRandomValues(buffer);
+
+        // Convert the buffer to a hexadecimal string and then to a BigInt
+        rand = BigInt("0x" + Array.from(buffer, byte => byte.toString(16).padStart(2, '0')).join(''));
+
+        if (rand >= min) {
+            break;
+        }
+    }
+
+    const privKey = rand % SNARK_FIELD_SIZE;
+
+    return privKey;
+}
+
+export function symmetricEncrypt(message, key, nonce) {
+  return poseidon2([key, nonce]) + message;
+}
+
+export function symmetricDecrypt(message, key, nonce) {
+  return (message - poseidon2([key, nonce])) % SNARK_FIELD_SIZE;
 }

@@ -63,7 +63,8 @@ p { margin-bottom:15px; }
 .status-bar>div { padding:0px 5px; border:2px inset #fff; flex:1;}
 
 
-.panel { overflow:auto; height:calc(100vh - 171px);  background:#fff;}
+.panel { overflow:auto; height:calc(100vh - 171px);  background:#fff; display:flex; flex-direction:column;}
+.table-wrapper { flex:1; }
 table {width:100%;}
 th { position:sticky; top:0px; }
 th span { display:block; padding: 1px 4px; background:#ddd; border: 2px outset #fff; text-wrap:nowrap;}
@@ -71,4 +72,4 @@ th:active span { border:2px inset #fff; }
 td { padding: 1px 4px; }
 td a { text-overflow:ellipsis; }
 tbody tr.active { background:#006; color:#fff; outline: 1px dotted #ccc;}
-tbody tr.active a.link { color: #fff; }
+tbody tr.active .link { color: #fff; }
