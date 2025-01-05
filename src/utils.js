@@ -29,16 +29,25 @@ export function genTree(items, proofIndex) {
   // the tree depth is actually 3. The missing siblings can be set to 0, as they
   // won't be used to calculate the root in the circuit.
   const treeIndices = [];
+  let treeDepth;
 
   for (let i = 0; i < MAX_DEPTH; i += 1) {
       treeIndices.push((index >> i) & 1);
 
       if (treeSiblings[i] === undefined) {
+          if(treeDepth === undefined) {
+            treeDepth = i;
+          }
           treeSiblings[i] = BigInt(0);
       }
   }
 
-  return { treeSiblings, treeIndices, treeDepth: tree.depth, treeRoot: tree.root };
+  return {
+    treeSiblings,
+    treeIndices,
+    treeDepth,
+    treeRoot: tree.root
+  };
 }
 
 export function getCalldata(proof) {

@@ -129,16 +129,14 @@ export default class PrivateTokenSession {
       abi,
       address: byChain[chainId].PrivateToken,
     });
-    const account = await contract.read.accounts([tokenAddr, userAddress]);
+    const {privateKey, publicKey} = this.balanceKeypair();
+    const account = await contract.read.accounts([tokenAddr, publicKey]);
 
     const sendAmount = 0n;
     // TODO send this zero amount to a zero (burn) pubkeyH
     const sendEncrypted = ntru.encryptBits(bigintToBits(sendAmount));
 
     const newBalanceNonce = genRandomBabyJubValue();
-    const {privateKey, publicKey} = this.balanceKeypair();
-    const test1 = symmetricEncrypt(12345n, privateKey, newBalanceNonce);
-    const test2 = symmetricDecrypt(test1, privateKey, newBalanceNonce);
     const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
     const finalBalance = symmetricEncrypt(
       balance + BigInt(receiveAmount) - sendAmount,
@@ -198,7 +196,7 @@ export default class PrivateTokenSession {
       this.incoming[chainId][tokenAddr] = { count, found: newItems };
     } else {
       this.incoming[chainId][tokenAddr].count = count;
-      newitems.forEach(item => this.incoming[chainId][tokenAddr].found.push(item));
+      newItems.forEach(item => this.incoming[chainId][tokenAddr].found.push(item));
     }
     await this.saveToLocalStorage();
   }
