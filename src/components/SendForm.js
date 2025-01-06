@@ -2,6 +2,7 @@ import {useState, useRef, useEffect} from 'react';
 import { toast } from 'react-hot-toast';
 import {
   useAccount,
+  usePublicClient,
   useWalletClient,
   useReadContracts,
   useWriteContract,
@@ -15,6 +16,7 @@ import TokenDetails from './TokenDetails.js';
 
 export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
   const account = useAccount();
+  const publicClient = usePublicClient({ chainId });
   const walletClient = useWalletClient({ chainId });
   const [loading, setLoading] = useState(null);
   const [sendAmount, setSendAmount] = useState('0');
@@ -81,7 +83,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       setLoading('Generating proof...');
       // mint into pool
       try {
-        const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId));
+        const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId), publicClient, recipAddr);
         setLoading('Waiting for transaction...');
         writeContract(tx);
       } catch(error) {
@@ -94,6 +96,17 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       // standard erc20 transfer
     } else if(source === 'private' && recipType === 'private') {
       // private transfer
+      setLoading('Generating proof...');
+      // mint into pool
+      try {
+        const tx = await sesh.sendPrivateTx(BigInt(sendAmount), inputTokenAddr, chainId, publicClient, recipAddr);
+        setLoading('Waiting for transaction...');
+        writeContract(tx);
+      } catch(error) {
+        setLoading(null);
+        console.error(error);
+        toast.error('Error generating proof!');
+      }
     } else if(source === 'private' && recipType === 'public') {
       // burn from pool
     }
@@ -151,7 +164,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         </fieldset>
       </div>
       <div className="controls">
-        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) || (source === 'private')} className="button" type="submit">
+        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) /*|| (source === 'private')*/} className="button" type="submit">
           {loading || (source === 'public' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
         </button>
       </div>

@@ -73,15 +73,18 @@ export default class PrivateTokenSession {
   static async import(data, password) {
     return new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
   }
-  // TODO this in the wrong spot
   static fromPackedPublicKey(hBytes) {
     // First need to calculate the maxOutputBits for a public key packing
-    const {ntru} = new PrivateTokenSession;
+    const newSesh = new PrivateTokenSession;
+    const {ntru} = newSesh;
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const unpacked = splitHexToBigInt(hBytes, hPacked.maxOutputBits);
-    const toRaw = unpackInput(ntru.q, hPacked.maxOutputBits, unpacked);
+    // For small (test size) keys, the value is shorter than one element
+    const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
     ntru.h = toRaw.unpacked;
-    return ntru;
+    const hPacked2 = packOutput(ntru.q, ntru.N, ntru.h);
+    const hBytes2 = combineBigIntToHex(hPacked2.expected, hPacked2.maxOutputBits);
+    return newSesh;
   }
   async scanForIncoming(client, tokenAddr, chainId) {
     const contract = getContract({
@@ -116,7 +119,7 @@ export default class PrivateTokenSession {
       unpacked,
     };
   }
-  async receiveTx(tokenAddr, chainId, encBits, index, unpacked, client, userAddress, receiveAmount) {
+  async receiveTx(tokenAddr, chainId, encBits, index, unpacked, client, receiveAmount) {
     const {ntru} = this;
     const receiveDecrypted = ntru.decryptBits(encBits);
     const verifyKeys = ntru.verifyKeysInputs();
@@ -133,7 +136,7 @@ export default class PrivateTokenSession {
     const account = await contract.read.accounts([tokenAddr, publicKey]);
 
     const sendAmount = 0n;
-    // TODO send this zero amount to a zero (burn) pubkeyH
+    const encSesh = PrivateTokenSession.fromPackedPublicKey('0x42424242424242424242424242');
     const sendEncrypted = ntru.encryptBits(bigintToBits(sendAmount));
 
     const newBalanceNonce = genRandomBabyJubValue();
@@ -203,7 +206,7 @@ export default class PrivateTokenSession {
   balanceKeypair() {
     const {ntru} = this;
     // privkey for balance symmetric encryption is packed+summed f
-    const privKeyPacked = packOutput(4, ntru.N, ntru.f.map(x=>x===-1 ? 2 : x));
+    const privKeyPacked = packOutput(3, ntru.N, ntru.f.map(x=>x===-1 ? 2 : x));
     const privateKey = privKeyPacked.expected.reduce((sum, cur) => sum + cur, 0n) % SNARK_FIELD_SIZE;
     // pubkey for encrypted balance storage is hash of the packed f
     const publicKey = calcMultiHash(privKeyPacked.expected);
@@ -224,6 +227,9 @@ export default class PrivateTokenSession {
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
 
+    const unpacked = splitHexToBigInt(`0x${hBytes}`, hPacked.maxOutputBits);
+    const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
+
     return {
       abi: registryAbi,
       address: byChain[chainId].KeyRegistry,
@@ -232,9 +238,17 @@ export default class PrivateTokenSession {
     };
 
   }
-  async mintTx(sendAmount, tokenAddr, chainId) {
+  async mintTx(sendAmount, tokenAddr, chainId, client, recipAddr) {
     const {ntru} = this;
-    const encrypted = ntru.encryptBits(bigintToBits(sendAmount));
+
+    const registry = getContract({
+      client,
+      abi: registryAbi,
+      address: byChain[chainId].KeyRegistry,
+    });
+    const hBytes = await registry.read.data([recipAddr]);
+    const encSesh = PrivateTokenSession.fromPackedPublicKey(hBytes);
+    const encrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
     const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
     const decrypted = ntru.decryptBits(encrypted.value);
 
@@ -264,7 +278,87 @@ export default class PrivateTokenSession {
       args,
     };
   }
-  mainTx() {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr) {
+    const {ntru} = this;
+    // fake empty receive
+    const receiveEncrypted = ntru.encryptBits(bigintToBits(0n));
+    const receivePacked = packOutput(ntru.q, ntru.N+1, receiveEncrypted.inputs.remainderE);
+    const receiveDecrypted = ntru.decryptBits(receiveEncrypted.value);
+    const verifyKeys = ntru.verifyKeysInputs();
+
+    const leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
+    // Index doesn't matter for treeRoot calculation
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, 0);
+
+    const contract = getContract({
+      client,
+      abi,
+      address: byChain[chainId].PrivateToken,
+    });
+    const {privateKey, publicKey} = this.balanceKeypair();
+    const account = await contract.read.accounts([tokenAddr, publicKey]);
+
+    const registry = getContract({
+      client,
+      abi: registryAbi,
+      address: byChain[chainId].KeyRegistry,
+    });
+    const hBytes = await registry.read.data([recipAddr]);
+    const encSesh = PrivateTokenSession.fromPackedPublicKey(hBytes);
+    const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
+
+    const newBalanceNonce = genRandomBabyJubValue();
+    const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
+    const finalBalance = symmetricEncrypt(
+      balance - sendAmount,
+      privateKey,
+      newBalanceNonce
+    );
+
+    const inputs = {
+      tokenAddr,
+      chainId,
+      encryptedReceive: receivePacked.expected,
+      f: receiveDecrypted.inputs.f,
+      fp: receiveDecrypted.inputs.fp,
+      quotientFp: verifyKeys.fp.inputs.quotientI,
+      remainderFp: verifyKeys.fp.inputs.remainderI,
+      receiveQuotient1: receiveDecrypted.inputs.quotient1,
+      receiveRemainder1: receiveDecrypted.inputs.remainder1,
+      receiveQuotient2: receiveDecrypted.inputs.quotient2,
+      receiveRemainder2: receiveDecrypted.inputs.remainder2,
+      treeDepth,
+      treeIndices,
+      treeSiblings,
+      encryptedBalance: account[0],
+      balanceNonce: account[1],
+      newBalanceNonce,
+      sendAmount,
+      recipH: sendEncrypted.inputs.h,
+      sendR: sendEncrypted.inputs.r,
+      sendQuotient: sendEncrypted.inputs.quotientE,
+      sendRemainder: sendEncrypted.inputs.remainderE,
+      burnAddress: 0,
+      isBurn: 0,
+      isReceiving: 0,
+      nonReceivingTreeRoot: treeRoot,
+    };
+
+    const proof = await groth16.fullProve(
+      inputs,
+      'circuits/main/verify_circuit.wasm',
+      'circuits/main/groth16_pkey.zkey',
+    );
+
+    if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
+
+    const args = getCalldata(proof);
+    return {
+      abi,
+      address: byChain[chainId].PrivateToken,
+      functionName: 'verifyProof',
+      args,
+    };
   }
 }
 

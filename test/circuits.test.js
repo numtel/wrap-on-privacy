@@ -101,7 +101,7 @@ describe("privacy-token", () => {
       const receiveTxHash = calcMultiHash(receivePacked.expected);
 
       // privkey for balance symmetric encryption is packed+summed f
-      const privKeyPacked = packOutput(4, ntru.N, receiveDecrypted.inputs.f.map(x=>x===ntru.q-1 ? 2 : x));
+      const privKeyPacked = packOutput(3, ntru.N, receiveDecrypted.inputs.f.map(x=>x===ntru.q-1 ? 2 : x));
       const privateKey = privKeyPacked.expected.reduce((sum, cur) => sum + cur, 0n) % SNARK_FIELD_SIZE;
       const receiveNullifier = poseidon2([receiveTxHash, privateKey]);
       // pubkey for encrypted balance storage is hash of the packed f

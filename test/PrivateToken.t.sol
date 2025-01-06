@@ -65,11 +65,11 @@ contract PrivateTokenTest is Test, IPrivateToken {
       123, // encryptedAmountSent[0]
       123, // encryptedAmountSent[1]
       123, // encryptedAmountSent[2]
+      tokenAddr,
+      block.chainid,
       0, // ogBalance,
       0, // balanceNonce,
-      123, //newBalanceNonce,
-      tokenAddr,
-      block.chainid
+      123 //newBalanceNonce,
     ]) {
       revert TestError();
     } catch {
@@ -85,11 +85,11 @@ contract PrivateTokenTest is Test, IPrivateToken {
       123, // encryptedAmountSent[0]
       123, // encryptedAmountSent[1]
       124, // encryptedAmountSent[2]
+      tokenAddr,
+      block.chainid,
       0, // ogBalance,
       0, // balanceNonce,
-      123, //newBalanceNonce,
-      tokenAddr,
-      block.chainid
+      123 //newBalanceNonce,
     ]);
     assertEq(token.balanceOf(address(this)), 0);
 
@@ -102,11 +102,11 @@ contract PrivateTokenTest is Test, IPrivateToken {
       1, // encryptedAmountSent[0]
       privateAmount + 1, // encryptedAmountSent[1]
       uint(uint160(address(this))), // encryptedAmountSent[2]
+      tokenAddr,
+      block.chainid,
       encBalance, // ogBalance,
       123, // balanceNonce,
-      1234, //newBalanceNonce,
-      tokenAddr,
-      block.chainid
+      1234 //newBalanceNonce,
     ]) {
       revert TestError();
     } catch {
@@ -122,11 +122,11 @@ contract PrivateTokenTest is Test, IPrivateToken {
       1, // encryptedAmountSent[0]
       privateAmount, // encryptedAmountSent[1]
       uint(uint160(address(this))), // encryptedAmountSent[2]
+      tokenAddr,
+      block.chainid,
       encBalance, // ogBalance,
       123, // balanceNonce,
-      1234, //newBalanceNonce,
-      tokenAddr,
-      block.chainid
+      1234 //newBalanceNonce,
     ]);
 
     assertEq(token.balanceOf(address(this)), privateAmount);

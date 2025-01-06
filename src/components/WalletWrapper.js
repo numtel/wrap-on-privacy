@@ -18,6 +18,7 @@ import {
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
+sepolia.rpcUrls.default.http[0] = 'https://rpc.ankr.com/eth_sepolia';
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',
   projectId: '3ab784972e6540d0095810e72372cfd1',

@@ -31,11 +31,11 @@ export default function StatusBar({ sesh, refreshCounter }) {
         isLoading ? 'Loading key registration status...' :
         data && pubKeyTx && data[0].result !== pubKeyTx.args[0] ? <>
           <ExclamationTriangleIcon className="h-5 w-5 mr-1 text-red-700 inline-block" />
-          Registered key does not match. Cannot receive on this private account at this Ethereum address.
+          Must register key to receive on this address.
         </> :
         data && pubKeyTx && data[0].result === pubKeyTx.args[0] ? <>
           <CheckCircleIcon className="h-5 w-5 mr-1 text-green-700 inline-block" />
-          Registered key matches. Able to receive on this private account at this Ethereum address.
+          Key registered, receiving on this address.
         </>:
         'Unknown receive status.'}
     </div>

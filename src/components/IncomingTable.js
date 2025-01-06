@@ -65,7 +65,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
         const decrypted = sesh.decryptIncoming(data[i].result);
         const index = i/3 + contracts[0].args[1];
         lastIndex = index;
-        if(decrypted) {
+        if(decrypted.value) {
           cleanData.push({
             index,
             receiveTxHash: decrypted.receiveTxHash.toString(10),
@@ -85,7 +85,6 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
         }
       }
       sesh.setLastScanned(activePool, chainId, lastIndex + 1, cleanData);
-      console.log(cleanData);
       setCleanData(cleanData);
     }
   }, [isSuccess]);
@@ -115,8 +114,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
 
   async function acceptIncoming(item) {
     toast.loading('Generating proof...');
-    console.log(item);
-    const tx = await sesh.receiveTx(activePool, chainId, item.encrypted, item.index, item.unpacked, publicClient, account.address, item.decrypted);
+    const tx = await sesh.receiveTx(activePool, chainId, item.encrypted, item.index, item.unpacked, publicClient, item.decrypted);
     toast.dismiss();
     toast.loading('Waiting for transaction...');
     writeContract(tx);
