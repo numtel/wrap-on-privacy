@@ -4,19 +4,6 @@ import { poseidon2 } from "poseidon-lite";
 export const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001n;
 const MAX_DEPTH = 32;
 
-export function randomBigInt(bits) {
-    const bytes = Math.ceil(bits / 8);
-    const randomBytes = new Uint8Array(bytes);
-    crypto.getRandomValues(randomBytes);
-
-    let bigint = BigInt(0);
-    for (let byte of randomBytes) {
-        bigint = (bigint << BigInt(8)) | BigInt(byte);
-    }
-
-    return bigint;
-}
-
 export function genTree(items, proofIndex) {
   const tree = new LeanIMT((a, b) => poseidon2([a, b]));
 
