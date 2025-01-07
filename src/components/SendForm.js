@@ -15,6 +15,7 @@ import {symmetricDecrypt} from '../utils.js';
 import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
+// TODO add a check box to also accept the selected incoming receive tx
 export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
   const account = useAccount();
   const publicClient = usePublicClient({ chainId });
