@@ -11,6 +11,7 @@ import {
 import {erc20Abi} from 'viem';
 
 import {byChain, defaultChain} from '../contracts.js';
+import {symmetricDecrypt} from '../utils.js';
 import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
@@ -67,6 +68,19 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
+  async function tryProof(txFun) {
+    try {
+      setLoading('Generating proof...');
+      const tx = await txFun();
+      setLoading('Waiting for transaction...');
+      writeContract(tx);
+    } catch(error) {
+      setLoading(null);
+      console.error(error);
+      toast.error('Error generating proof!');
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if(source === 'public' && recipType === 'private') {
@@ -80,35 +94,44 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         });
         return;
       }
-      setLoading('Generating proof...');
       // mint into pool
-      try {
-        const tx = await sesh.mintTx(BigInt(sendAmount), BigInt(inputTokenAddr), BigInt(chainId), publicClient, recipAddr);
-        setLoading('Waiting for transaction...');
-        writeContract(tx);
-      } catch(error) {
-        setLoading(null);
-        console.error(error);
-        toast.error('Error generating proof!');
-      }
-
+      await tryProof(() => sesh.mintTx(
+        BigInt(sendAmount),
+        BigInt(inputTokenAddr),
+        BigInt(chainId),
+        publicClient,
+        recipAddr
+      ));
     } else if(source === 'public' && recipType === 'public') {
       // standard erc20 transfer
+      setLoading('Waiting for transaction...');
+      writeContract({
+        abi: erc20Abi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'transfer',
+        args: [ recipAddr, sendAmount ]
+      });
     } else if(source === 'private' && recipType === 'private') {
       // private transfer
-      setLoading('Generating proof...');
-      // mint into pool
-      try {
-        const tx = await sesh.sendPrivateTx(BigInt(sendAmount), inputTokenAddr, chainId, publicClient, recipAddr);
-        setLoading('Waiting for transaction...');
-        writeContract(tx);
-      } catch(error) {
-        setLoading(null);
-        console.error(error);
-        toast.error('Error generating proof!');
-      }
+      await tryProof(() => sesh.sendPrivateTx(
+        BigInt(sendAmount),
+        inputTokenAddr,
+        chainId,
+        publicClient,
+        recipAddr,
+        false
+      ));
     } else if(source === 'private' && recipType === 'public') {
       // burn from pool
+      await tryProof(() => sesh.sendPrivateTx(
+        BigInt(sendAmount),
+        inputTokenAddr,
+        chainId,
+        publicClient,
+        recipAddr,
+        true
+      ));
     }
   }
 
@@ -142,7 +165,17 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" min="0" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
-          <p>Max: {balanceData ? source === 'public' ? balanceData[0].result.toString() : 'xxx' : 'Loading...'}</p>
+          <p>Max: {balanceData
+            ? source === 'public'
+              ? balanceData[0].result.toString()
+              : balanceData[2].result[0] === 0n
+                ? '0'
+                : symmetricDecrypt(
+                  balanceData[2].result[0],
+                  sesh.balanceKeypair().privateKey,
+                  balanceData[2].result[1]
+                ).toString()
+            : 'Loading...'}</p>
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>
@@ -156,7 +189,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
           </label>
           <label className="text">
             <span>Address or ENS name:</span>
-            <input name="recipAddr" value={recipAddr} onChange={e => setReciptAddr(e)} />
+            <input name="recipAddr" value={recipAddr} onChange={e => setRecipAddr(e.target.value)} />
           </label>
           <p><button className="link" type="button" onClick={sendToSelf}>
             Send to Self
@@ -164,8 +197,8 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         </fieldset>
       </div>
       <div className="controls">
-        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && balanceData[0].result < sendAmount) /*|| (source === 'private')*/} className="button" type="submit">
-          {loading || (source === 'public' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
+        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && recipType === 'private' && balanceData[0].result < sendAmount)} className="button" type="submit">
+          {loading || (source === 'public' && recipType === 'private' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
         </button>
       </div>
     </form>

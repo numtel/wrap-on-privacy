@@ -278,7 +278,7 @@ export default class PrivateTokenSession {
       args,
     };
   }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr) {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, isBurn) {
     const {ntru} = this;
     // fake empty receive
     const receiveEncrypted = ntru.encryptBits(bigintToBits(0n));
@@ -303,7 +303,13 @@ export default class PrivateTokenSession {
       abi: registryAbi,
       address: byChain[chainId].KeyRegistry,
     });
-    const hBytes = await registry.read.data([recipAddr]);
+    let hBytes;
+    if(isBurn) {
+      // Not used but needs to be calculated
+      hBytes = '0x42424242';
+    } else {
+      hBytes = await registry.read.data([recipAddr]);
+    }
     const encSesh = PrivateTokenSession.fromPackedPublicKey(hBytes);
     const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
 
@@ -338,8 +344,8 @@ export default class PrivateTokenSession {
       sendR: sendEncrypted.inputs.r,
       sendQuotient: sendEncrypted.inputs.quotientE,
       sendRemainder: sendEncrypted.inputs.remainderE,
-      burnAddress: 0,
-      isBurn: 0,
+      burnAddress: isBurn ? recipAddr : 0,
+      isBurn: isBurn ? 1 : 0,
       isReceiving: 0,
       nonReceivingTreeRoot: treeRoot,
     };
