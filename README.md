@@ -40,6 +40,11 @@ $ npm run deploy:contract
 $ npm run deploy:registry-contract
 ```
 
+> [!IMPORTANT]
+> To generate proofs locally, you'll need to download the build archives from Circuitscan and place the zkey/wasm files in `public/circuits/main` and `public/circuits/mint`. They're too big to put in the git repo!
+>
+> Links to the verifiers on Circuitscan are in the "Help > About" dialog.
+
 ## Transfer Types
 
 &nbsp;| Public Source | Private Source

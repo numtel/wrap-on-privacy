@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 // Adjust based on key size
-uint256 constant nO = 3;
+uint256 constant nO = 25;
 uint256 constant nPub = nO + 9;
 uint256 constant nPubMint = nO + 3;
 

@@ -27,23 +27,34 @@ export default class PrivateTokenSession {
   constructor(options) {
     Object.assign(this, {
       ntru: {
-        // very small keys, not secure, but fast
-        N: 17,
-        q: 32,
-        df: 3,
-        dg: 2,
-        dr: 2,
+        N: 509,
+        q: 2048,
+        df: Math.floor(509/3),
+        dg: Math.floor(509/3),
+        dr: Math.floor(509/3),
       },
       incoming: {},
     }, options);
 
     this.ntru = new NTRU(this.ntru);
     if(this.ntru.f) {
-      this.ntru.loadPrivateKeyF(this.ntru.f);
+      if(!this.ntru.fq || !this.ntru.fp) {
+        console.time('load');
+        this.ntru.loadPrivateKeyF(this.ntru.f);
+        console.timeEnd('load');
+      }
+      console.time('load2');
       this.ntru.verifyKeysInputs();
-    } else {
+      console.timeEnd('load2');
+    } else if(!this.ntru.h) {
+      console.time('gen');
+      // TODO only do this if it's requested to be done
+      // TODO need to do this in a web worker!
       this.ntru.generatePrivateKeyF();
+      console.timeEnd('gen');
+      console.time('gen2');
       this.ntru.generateNewPublicKeyGH();
+      console.timeEnd('gen2');
     }
   }
   async export() {
@@ -51,8 +62,6 @@ export default class PrivateTokenSession {
     if(!password) throw new Error('Missing password!');
 
     const data = JSON.parse(JSON.stringify(this));
-    delete data.ntru.fp;
-    delete data.ntru.fq;
     delete data.ntru.I;
     return encryptJson(JSON.stringify(data), password);
   }
@@ -68,22 +77,25 @@ export default class PrivateTokenSession {
     return localStorage.hasOwnProperty(SESH_KEY);
   }
   static async loadFromLocalStorage(password) {
-    return new PrivateTokenSession(JSON.parse(await decryptJson(JSON.parse(localStorage.getItem(SESH_KEY)), password)));
+    return PrivateTokenSession.import(JSON.parse(localStorage.getItem(SESH_KEY)), password);
   }
   static async import(data, password) {
     return new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
   }
-  static fromPackedPublicKey(hBytes) {
+  fromPackedPublicKey(hBytes) {
     // First need to calculate the maxOutputBits for a public key packing
-    const newSesh = new PrivateTokenSession;
-    const {ntru} = newSesh;
+    const {ntru} = this;
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const unpacked = splitHexToBigInt(hBytes, hPacked.maxOutputBits);
     // For small (test size) keys, the value is shorter than one element
     const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
-    ntru.h = toRaw.unpacked;
-    const hPacked2 = packOutput(ntru.q, ntru.N, ntru.h);
-    const hBytes2 = combineBigIntToHex(hPacked2.expected, hPacked2.maxOutputBits);
+    const newSesh = new PrivateTokenSession({
+      ntru: {
+        N: ntru.N,
+        q: ntru.q,
+        h: toRaw.unpacked,
+      },
+    });
     return newSesh;
   }
   async scanForIncoming(client, tokenAddr, chainId) {
@@ -99,16 +111,15 @@ export default class PrivateTokenSession {
   }
   decryptIncoming(encValue) {
     // First need to calculate the maxOutputBits for a public key packing
-    const {ntru} = new PrivateTokenSession;
+    const {ntru} = this;
 
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const unpacked = splitHexToBigInt(encValue, 256);
     // For small (test size) keys, the value is shorter than one element
     const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
-    const decrypted = this.ntru.decryptBits(toRaw.unpacked);
+    const decrypted = ntru.decryptBits(toRaw.unpacked);
     const receiveTxHash = calcMultiHash(unpacked);
 
-    // TODO also add padding for more checking
     // Invalid decryption
     const failed = decrypted.value.some(x=>!(x===0 || x===1));
 
@@ -136,8 +147,9 @@ export default class PrivateTokenSession {
     const account = await contract.read.accounts([tokenAddr, publicKey]);
 
     const sendAmount = 0n;
-    const encSesh = PrivateTokenSession.fromPackedPublicKey('0x42424242424242424242424242');
-    const sendEncrypted = ntru.encryptBits(bigintToBits(sendAmount));
+    // TODO this needs to be a random value of full length because otherwise it's obvious in the tx data
+    const encSesh = this.fromPackedPublicKey('0x42424242424242424242424242');
+    const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
 
     const newBalanceNonce = genRandomBabyJubValue();
     const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
@@ -227,9 +239,6 @@ export default class PrivateTokenSession {
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
 
-    const unpacked = splitHexToBigInt(`0x${hBytes}`, hPacked.maxOutputBits);
-    const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
-
     return {
       abi: registryAbi,
       address: byChain[chainId].KeyRegistry,
@@ -247,7 +256,7 @@ export default class PrivateTokenSession {
       address: byChain[chainId].KeyRegistry,
     });
     const hBytes = await registry.read.data([recipAddr]);
-    const encSesh = PrivateTokenSession.fromPackedPublicKey(hBytes);
+    const encSesh = this.fromPackedPublicKey(hBytes);
     const encrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
     const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
     const decrypted = ntru.decryptBits(encrypted.value);
@@ -310,7 +319,7 @@ export default class PrivateTokenSession {
     } else {
       hBytes = await registry.read.data([recipAddr]);
     }
-    const encSesh = PrivateTokenSession.fromPackedPublicKey(hBytes);
+    const encSesh = this.fromPackedPublicKey(hBytes);
     const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
 
     const newBalanceNonce = genRandomBabyJubValue();
@@ -422,31 +431,29 @@ function combineBigIntToHex(bigints, maxBits) {
 }
 
 
-function splitHexToBigInt(hexString, maxBits) {
-    if (typeof hexString !== 'string') {
-        throw new TypeError('Input must be a hexadecimal string.');
-    }
+function splitHexToBigInt(hexString, bitLength) {
+  // Remove the '0x' prefix if it exists
+  hexString = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
 
-    if (typeof maxBits !== 'number' || maxBits <= 0 || !Number.isInteger(maxBits)) {
-        throw new TypeError('maxBits must be a positive integer.');
-    }
+  // Ensure the hex string has an even number of characters for clean bit splitting
+  if (hexString.length % 2 !== 0) {
+    hexString = '0' + hexString; // Prepend a leading zero if necessary
+  }
 
-    let combinedBinary = BigInt(hexString).toString(2);
-    const totalBits = combinedBinary.length;
+  // Convert the hex string to a binary string
+  const binaryString = BigInt('0x' + hexString).toString(2).padStart(hexString.length * 4, '0');
 
-    // Pad combinedBinary with leading zeros if it doesn't align with maxBits
-    const paddedLength = Math.ceil(totalBits / maxBits) * maxBits;
-    combinedBinary = combinedBinary.padStart(paddedLength, '0');
+  const result = [];
 
-    const bigints = [];
-    for (let i = 0; i < combinedBinary.length; i += maxBits) {
-        const segment = combinedBinary.slice(i, i + maxBits);
-        bigints.push(BigInt('0b' + segment));
-    }
+  // Iterate over the binary string and split it into chunks based on bitLength
+  for (let i = 0; i < binaryString.length; i += bitLength) {
+    const chunk = binaryString.slice(i, i + bitLength);
+    const num = BigInt('0b' + chunk); // Convert the binary chunk to a decimal number
+    result.push(num);
+  }
 
-    return bigints;
+  return result;
 }
-
 
 // Helper function to encode ArrayBuffer to Base64
 function arrayBufferToBase64(buffer) {

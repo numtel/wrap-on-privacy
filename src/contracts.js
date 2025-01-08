@@ -1,7 +1,6 @@
 export const byChain = {
   11155111: {
-    MockERC20: '0x2C35714C1dF8069856E41e7b75B2270929b6459c',
-    PrivateToken: '0x3C2ca19E80428F7E19808859483A08CF07476722',
+    PrivateToken: '0x0E736681782d106B1CAf41773BCd538e3ae7A85e',
     KeyRegistry: '0x1BbF48d8178743605C0BE1e5708Bf7e0a38B22E0',
     explorer: 'https://sepolia.etherscan.io/address/',
   }

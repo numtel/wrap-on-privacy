@@ -24,19 +24,18 @@ const circomkit = new Circomkit({
 });
 
 const ntru = new NTRU({
-  // very small keys, not secure, but fast
-  N: 17,
-  q: 32,
-  df: 3,
-  dg: 2,
-  dr: 2,
+  N: 509,
+  q: 2048,
+  df: Math.floor(509/3),
+  dg: Math.floor(509/3),
+  dr: Math.floor(509/3),
 });
 ntru.generatePrivateKeyF();
 ntru.generateNewPublicKeyGH();
 
 const MAX_DEPTH = 32n;
 const MAX_AMOUNT_BITS = 252n;
-const MAX_SEND_AMOUNT = 2n ** BigInt(Math.min(252, ntru.N));
+const MAX_SEND_AMOUNT = 2n ** BigInt(Math.min(252, ntru.N)) - 1;
 
 
 describe("privacy-token", () => {
@@ -279,3 +278,4 @@ describe("encryption-symmetric", () => {
     await circuitDecrypt.expectPass({ encryptedMessage, key, nonce }, { message });
   });
 });
+

@@ -138,6 +138,8 @@ template PrivacyToken(
   for(var i = 0; i<N; i++) {
     if(i < MAX_AMOUNT_BITS) {
       amountReceivedBits[i] = receiveRemainder2[i];
+    } else {
+      receiveRemainder2[i] === 0;
     }
   }
   var amountReceived = Bits2Num(MAX_AMOUNT_BITS)(amountReceivedBits);

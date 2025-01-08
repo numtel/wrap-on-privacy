@@ -11,11 +11,12 @@
     "test": "mocha -t 50000 && forge test",
     "compile:circuit": "circomkit compile privacytoken",
     "compile:mint-circuit": "circomkit compile privatemint",
-    "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
-    "deploy:mint-circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privatemint.circom",
-    "deploy:contract": "VERIFIER_ADDRESS=0x18042f150edeb3415a7152834217f54d2f714adb MINT_VERIFIER_ADDRESS=0xdccf1079fa92acd45ab3e30637aa84c4e36ea21e forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
+    "deploy:circuit": "circuitscan deploy:circom -i 32 -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
+    "deploy:mint-circuit": "circuitscan deploy:circom -i 32 -b -p groth16 -v v2.2.0 -s 0.7.5 main/privatemint.circom",
+    "deploy:contract": "VERIFIER_ADDRESS=0xd1cbc4c67ff782e0b3b0e7cd2d8fbc2a3abdb114 MINT_VERIFIER_ADDRESS=0xde2daa84e6867778b75682c417eb7127a0694ef1 forge script script/PrivateToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
     "deploy:registry-contract": "forge script script/KeyRegistry.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
-    "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/"
+    "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/ --exclude \"*.wasm\" --exclude \"*.zkey\"",
+    "deploy:frontend-zkey": "aws s3 sync public/circuits/ s3://wrap.clonk.me/circuits/"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
