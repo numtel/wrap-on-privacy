@@ -75,6 +75,16 @@ In order to allow sending privately to a standard Ethereum address or ENS name, 
 
 You may update your public key as often as needed.
 
+## References
+
+* [Control as Liability by Vitalik Buterin](https://vitalik.eth.limo/general/2019/05/09/control_as_liability.html)
+
+    This philosophy directs the shape of Wrap on Privacy
+
+* [Blockchain privacy and regulatory compliance: Towards a practical equilibrium](https://www.sciencedirect.com/science/article/pii/S2096720923000519)
+
+    How to integrated ASPs into Wrap on Privacy? There must be more than just adding a second merkle tree calculation to the proof that's unchecked by the contract
+
 ## License
 
 MIT

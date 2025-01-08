@@ -1,11 +1,32 @@
+import { useAccount, useReadContracts } from 'wagmi';
+import { erc20Abi } from 'viem';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faEthereum } from '@fortawesome/free-brands-svg-icons';
 
 import {byChain, defaultChain} from '../contracts.js';
+import abi from '../abi/PrivateToken.json';
 
 import Dialog from './Dialog.js';
 
 export default function AboutForm({ setShowAbout, showAbout }) {
+  const account = useAccount();
+  const chainId = account.chainId || defaultChain;
+  const { data, isError, isLoading, refetch } = useReadContracts({contracts: [
+    {
+      address: byChain[chainId].PrivateToken,
+      abi,
+      chainId,
+      functionName: 'verifier',
+    },
+    {
+      address: byChain[chainId].PrivateToken,
+      abi,
+      chainId,
+      functionName: 'mintVerifier',
+    },
+  ], watch:false});
+
   return (<Dialog show={showAbout} setShow={setShowAbout}>
     <h2>About Wrap on Privacy</h2>
     <div className="banner about" />
@@ -14,10 +35,18 @@ export default function AboutForm({ setShowAbout, showAbout }) {
         <FontAwesomeIcon icon={faGithub} size="2xl" />
         View Project on Github
       </a>
-      <a href={`${byChain[defaultChain].explorer}${byChain[defaultChain].PrivateToken}`} className="link" rel="noopener" target="_blank">
+      <a href={`${byChain[chainId].explorer}${byChain[chainId].PrivateToken}`} className="link" rel="noopener" target="_blank">
         <FontAwesomeIcon icon={faEthereum} size="2xl" />
         View Main Contract on Etherscan
       </a>
     </div>
+    {data && <div className="flex items-center flex-col space-y-2 mt-4">
+      <a href={`https://circuitscan.org/chain/${chainId}/address/${data[0].result}`} className="link" rel="noopener" target="_blank">
+        Main Verifier on Circuitscan
+      </a>
+      <a href={`https://circuitscan.org/chain/${chainId}/address/${data[1].result}`} className="link" rel="noopener" target="_blank">
+        Mint Verifier on Circuitscan
+      </a>
+    </div>}
   </Dialog>);
 }
