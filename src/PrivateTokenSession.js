@@ -16,6 +16,7 @@ import {
   SNARK_FIELD_SIZE,
   symmetricEncrypt,
   symmetricDecrypt,
+  downloadTextFile,
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
 import registryAbi from './abi/KeyRegistry.json';
@@ -375,16 +376,6 @@ export default class PrivateTokenSession {
       args,
     };
   }
-}
-
-function downloadTextFile(content, filename) {
-  const blob = new Blob([content], { type: 'text/plain' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 function calcMultiHash(input) {

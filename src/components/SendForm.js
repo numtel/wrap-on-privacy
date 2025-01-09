@@ -8,7 +8,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
-import {erc20Abi} from 'viem';
+import {erc20Abi, parseUnits} from 'viem';
 
 import {byChain, defaultChain} from '../contracts.js';
 import {symmetricDecrypt} from '../utils.js';
@@ -43,6 +43,12 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         args: [ account.address, byChain[defaultChain].PrivateToken ]
       },
       sesh.balanceViewTx(inputTokenAddr, chainId),
+      {
+        abi: erc20Abi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'decimals',
+      },
     ],
   });
   const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
@@ -84,20 +90,25 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if(!balanceData) {
+      toast.error('Could not load balance!');
+      return;
+    }
+    const amountParsed = parseUnits(sendAmount, balanceData[3].result);
     if(source === 'public' && recipType === 'private') {
-      if(sendAmount > balanceData[1].result) {
+      if(amountParsed > balanceData[1].result) {
         writeContract({
           abi: erc20Abi,
           chainId,
           address: inputTokenAddr,
           functionName: 'approve',
-          args: [ byChain[defaultChain].PrivateToken, sendAmount ]
+          args: [ byChain[defaultChain].PrivateToken, amountParsed ]
         });
         return;
       }
       // mint into pool
       await tryProof(() => sesh.mintTx(
-        BigInt(sendAmount),
+        amountParsed,
         BigInt(inputTokenAddr),
         BigInt(chainId),
         publicClient,
@@ -111,12 +122,12 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         chainId,
         address: inputTokenAddr,
         functionName: 'transfer',
-        args: [ recipAddr, sendAmount ]
+        args: [ recipAddr, amountParsed ]
       });
     } else if(source === 'private' && recipType === 'private') {
       // private transfer
       await tryProof(() => sesh.sendPrivateTx(
-        BigInt(sendAmount),
+        amountParsed,
         inputTokenAddr,
         chainId,
         publicClient,
@@ -126,7 +137,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
     } else if(source === 'private' && recipType === 'public') {
       // burn from pool
       await tryProof(() => sesh.sendPrivateTx(
-        BigInt(sendAmount),
+        amountParsed,
         inputTokenAddr,
         chainId,
         publicClient,
@@ -138,6 +149,17 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
 
   function sendToSelf() {
     account && setRecipAddr(account.address);
+  }
+
+  let privateBalance = 0, publicBalance = 0, amountParsed = 0;
+  if(balanceData) {
+    amountParsed = parseUnits(sendAmount, balanceData[3].result);
+    publicBalance = balanceData[0].result;
+    privateBalance = balanceData[2].result[0] === 0n ? 0n : symmetricDecrypt(
+      balanceData[2].result[0],
+      sesh.balanceKeypair().privateKey,
+      balanceData[2].result[1]
+    );
   }
 
   return (<Dialog show={showSend} setShow={setShowSend}>
@@ -166,17 +188,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" min="0" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
-          <p>Max: {balanceData
-            ? source === 'public'
-              ? balanceData[0].result.toString()
-              : balanceData[2].result[0] === 0n
-                ? '0'
-                : symmetricDecrypt(
-                  balanceData[2].result[0],
-                  sesh.balanceKeypair().privateKey,
-                  balanceData[2].result[1]
-                ).toString()
-            : 'Loading...'}</p>
+          {balanceData && <p>Max: <TokenDetails address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></p>}
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>
@@ -198,8 +210,8 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         </fieldset>
       </div>
       <div className="controls">
-        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && recipType === 'private' && balanceData[0].result < sendAmount)} className="button" type="submit">
-          {loading || (source === 'public' && recipType === 'private' && balanceData && sendAmount > balanceData[1].result ? 'Approve' : 'Send')}
+        <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && publicBalance < amountParsed)|| (source === 'private' && privateBalance < amountParsed)} className="button" type="submit">
+          {loading || (source === 'public' && recipType === 'private' && balanceData && amountParsed > balanceData[1].result ? 'Approve' : 'Send')}
         </button>
       </div>
     </form>
