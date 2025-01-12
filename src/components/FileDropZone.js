@@ -44,7 +44,7 @@ const FileDropZone = ({ onFileSelect, acceptFiletype }) => {
     <div className="flex flex-col items-center justify-center">
       <div
         className={`max-w-96 h-52 border-4 border-dashed rounded-lg p-10 cursor-pointer transition ${
-          isDragging ? "border-blue-500" : "border-gray-500"
+          isDragging ? "border-blue-500" : "border-gray-500 dark:border-gray-300"
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -59,8 +59,8 @@ const FileDropZone = ({ onFileSelect, acceptFiletype }) => {
           onChange={handleFileChange}
         />
         <div className="flex flex-col items-center justify-center h-full">
-          <ArrowUpOnSquareIcon className="w-12 h-12 text-gray-700" />
-          <p className="text-gray-800 mt-4">
+          <ArrowUpOnSquareIcon className="w-12 h-12 text-gray-700 dark:text-gray-300" />
+          <p className="text-gray-800 dark:text-gray-200 mt-4">
             {selectedFile
               ? `Selected file: ${selectedFile.name}`
               : "Drag & drop a file here or click to select"}

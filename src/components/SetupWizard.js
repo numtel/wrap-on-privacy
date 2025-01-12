@@ -176,7 +176,7 @@ function SetPassword({sesh, setSesh, setStep}) {
         <div>
           <p>This password is used to encrypt your session file.</p>
           <p>There is no way to recover this password. <em>DO NOT LOSE IT!</em></p>
-          {PrivateTokenSession.hasLocalStorage() && <p className="text-red-800">Clicking next will overwrite the existing session in your local storage.</p>}
+          {PrivateTokenSession.hasLocalStorage() && <p className="text-red-800 dark:text-red-400">Clicking next will overwrite the existing session in your local storage.</p>}
           <label className="text">
             <span>New password:</span>
             <input ref={primaryInputRef} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
@@ -246,7 +246,7 @@ export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry,
       <div className="banner registry"></div>
       <div>
         <p>Submit this transaction so that you can receive privately at your Ethereum address on this chain.</p>
-        {!account.isConnected && <p className="text-red-800">Connect wallet to continue!</p>}
+        {!account.isConnected && <p className="text-red-800 dark:text-red-400">Connect wallet to continue!</p>}
       </div>
     </div>
     <div className="hr"></div>
