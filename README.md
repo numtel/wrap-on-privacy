@@ -54,13 +54,21 @@ Private Recipient | Mint into privacy pool | Send within pool
 
 Mint proof must be sent by the account holding the ERC20 tokens but burn proofs and sending within the pool can be sent by any account.
 
-## Relayers
+### Relayers
 
 There is no system to "relay" proofs built into Wrap on Privacy. There are no added fees for sending privately. There is no way to profit from someone else's transactions.
 
-For most transactions, obscuring the recipient and amount sent is sufficient privacy.
+In this system, the recipient and amount sent are obscured. While it will still be public that your account is making transactions, the contents of those transactions will be private.
 
-### Login vs Connect Wallet
+Property | Public | Private
+---------|--------|------------------
+Source account | :white_check_mark: | &nbsp;
+Transaction Amount | &nbsp; | :white_check_mark:
+Recipient account | &nbsp; | :white_check_mark:
+
+Also, there is no public distinction between sending and receiving an incoming transaction since they use the same proof.
+
+## Login vs Connect Wallet
 
 To be usable, Wrap on Privacy requires both logging into a private session as well as connecting a wallet.
 
@@ -70,15 +78,13 @@ The private session is for decrypting private balances and incoming transactions
 
 An incoming transaction will only decrypt successfully by the intended recipient. The client attempts to decrypt every encrypted transaction, displaying only those which successfully decrypt by the private key in your private session.
 
-To also obscure the source of the funds, a user may act as a relayer themselves and log into their private session using a different wallet address and submit the transaction. The recipient will see this relayer account as the "Sender" of the transaction.
-
-The status bar will show that the user cannot receive privately at that address but you can still send privately from the same private session.
-
 ## Key Registry
 
-In order to allow sending privately to a standard Ethereum address or ENS name, public keys are stored on-chain in a key registry.
+In order to allow receiving privately on a standard Ethereum address or ENS name, public keys are stored on-chain in a key registry.
 
 You may update your public key as often as needed.
+
+The status bar will display a green check if your key is registered at the current address.
 
 ## References
 
@@ -88,7 +94,7 @@ You may update your public key as often as needed.
 
 * [Blockchain privacy and regulatory compliance: Towards a practical equilibrium](https://www.sciencedirect.com/science/article/pii/S2096720923000519)
 
-    How to integrated ASPs into Wrap on Privacy? There must be more than just adding a second merkle tree calculation to the proof that's unchecked by the contract
+    How to integrate ASPs into Wrap on Privacy? Is there more than just adding a second merkle tree calculation to the proof that is not verified by the contract?
 
 ## License
 
