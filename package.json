@@ -19,6 +19,7 @@
     "deploy:frontend-zkey": "aws s3 sync public/circuits/ s3://wrap.clonk.me/circuits/"
   },
   "dependencies": {
+    "@crema-labs/aes-circom": "0.0.2",
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
     "@fortawesome/free-brands-svg-icons": "^6.5.2",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
@@ -30,7 +31,7 @@
     "@zk-kit/imt": "2.0.0-beta",
     "circomlib": "2.0.5",
     "ffjavascript": "0.2.62",
-    "ntru-circom": "0.0.12",
+    "ntru-circom": "0.0.13",
     "poseidon-lite": "0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -43,7 +44,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
-    "circomkit": "0.3.1",
+    "circomkit": "0.3.2",
     "circuitscan": "0.1.4",
     "mocha": "10.8.2",
     "postcss": "^8.4.38",
