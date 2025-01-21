@@ -17,12 +17,14 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal input treeDepth, treeIndices[MAX_DEPTH], treeSiblings[MAX_DEPTH];
   signal input treeRootIfSend;
   // public signals
+  signal input treeIndex;
   signal input publicMode; // 1 = mint, 2 = burn
   signal input chainId;
   signal input encryptedBalance;
   signal input oldBalanceNonce;
   signal input newBalanceNonce;
 
+  signal output receiveNullifier;
   signal output newBalance;
   signal output myPublicKey;
   signal output treeRoot;
@@ -62,18 +64,33 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   encryptNewBalance.nonce <== newBalanceNonce;
   encryptNewBalance.encryptedMessage ==> newBalance;
 
-  var txHash = Poseidon(5)([tokenAddr, chainId, sendAmount, sendBlinding, recipPublicKey]);
+  receiveNullifier <== Poseidon(6)([
+    tokenAddr,
+    chainId,
+    sendAmount,
+    sendBlinding,
+    recipPublicKey,
+    myPrivateKey
+  ]);
+  var txHash = Poseidon(5)([
+    tokenAddr,
+    chainId,
+    sendAmount,
+    sendBlinding,
+    recipPublicKey
+  ]);
   component outputHash = IfElse();
   outputHash.cond <== isReceive;
   outputHash.ifTrue <== fakeReceiveHash;
   outputHash.ifFalse <== txHash;
   outputHash.out ==> hash;
-  
+
   var calcTreeRoot = BinaryMerkleRoot(MAX_DEPTH)(txHash, treeDepth, treeIndices, treeSiblings);
   treeRoot <== IfElse()(isReceive, calcTreeRoot, treeRootIfSend);
 
-  // Ensure at least one constraint for this signal
+  // Ensure at least one constraint for these signals
   signal pubSq <== publicMode * publicMode;
+  signal idxSq <== treeIndex * treeIndex;
 
   var isPrivate = IsZero()(publicMode);
   publicTokenAddr <== IfElse()(isPrivate, 0, tokenAddr);

@@ -1,6 +1,6 @@
 import { Circomkit } from "circomkit";
 import { LeanIMT } from "@zk-kit/imt";
-import { poseidon5, poseidon2, poseidon1 } from "poseidon-lite";
+import { poseidon6, poseidon5, poseidon2, poseidon1 } from "poseidon-lite";
 
 import {
   randomBigInt,
@@ -120,6 +120,7 @@ function runCase(callback) {
       myPrivateKey,
       fakeReceiveHash,
       treeRootIfSend,
+      treeIndex: randomBigInt(MAX_VAL),
     };
 
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree([
@@ -136,10 +137,12 @@ function runCase(callback) {
     const output = {
       newBalance: symmetricEncrypt(newBalance, myPrivateKey, newBalanceNonce),
       hash: isReceive ? fakeReceiveHash : txHash(input),
+      receiveNullifier: nullifier(input),
       treeRoot: isReceive ? treeRoot : treeRootIfSend,
       publicTokenAddr: isPrivate ? 0 : input.tokenAddr,
       publicAddress: isPrivate ? 0 : input.recipPublicKey,
       publicAmount: isPrivate ? 0 : input.sendAmount,
+      myPublicKey,
     };
     if(expectPass) {
       await circuit.expectPass(input, output);
@@ -181,6 +184,17 @@ function txHash(input) {
     input.sendAmount,
     input.sendBlinding,
     input.recipPublicKey,
+  ]);
+}
+
+function nullifier(input) {
+  return poseidon6([
+    input.tokenAddr,
+    input.chainId,
+    input.sendAmount,
+    input.sendBlinding,
+    input.recipPublicKey,
+    input.myPrivateKey,
   ]);
 }
 
