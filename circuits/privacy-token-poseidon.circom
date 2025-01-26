@@ -25,6 +25,7 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal input newBalanceNonce;
 
   signal output receiveNullifier;
+  signal output tokenHash;
   signal output newBalance;
   signal output myPublicKey;
   signal output treeRoot;
@@ -34,7 +35,8 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal output publicAmount;
 
   myPublicKey <== Poseidon(1)([myPrivateKey]);
-  var isReceive = IsEqual()([ myPublicKey, recipPublicKey ]);
+  tokenHash <== Poseidon(2)([myPrivateKey, tokenAddr]);
+  var isReceive = IsEqual()([myPublicKey, recipPublicKey]);
 
   // Decrypt balance unless this account has not yet initialized a balance
   var oldBalance = IfElse()(
@@ -93,8 +95,9 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal idxSq <== treeIndex * treeIndex;
 
   var isPrivate = IsZero()(publicMode);
+  var isBurn = IsEqual()([publicMode, 2]);
   publicTokenAddr <== IfElse()(isPrivate, 0, tokenAddr);
-  publicAddress <== IfElse()(isPrivate, 0, recipPublicKey);
+  publicAddress <== IfElse()(isBurn, recipPublicKey, 0);
   publicAmount <== IfElse()(isPrivate, 0, sendAmount);
 
 }

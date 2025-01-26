@@ -52,9 +52,8 @@ describe("poseidon-privacy-token", () => {
   }));
   it("verifies a mint", runCase(input => {
     // Input includes the fake receive transaction
-    // the contract will ignore the balance changes and send hash
-    // This recipPublicKey is the msg.sender to the contract
-    input.recipPublicKey = randomBigInt(UINT160);
+    // the contract will ignore the balance changes
+    input.recipPublicKey = randomBigInt(MAX_VAL);
     input.publicMode = 1;
     return true;
   }));
@@ -138,9 +137,10 @@ function runCase(callback) {
       newBalance: symmetricEncrypt(newBalance, myPrivateKey, newBalanceNonce),
       hash: isReceive ? fakeReceiveHash : txHash(input),
       receiveNullifier: nullifier(input),
+      tokenHash: poseidon2([myPrivateKey, input.tokenAddr]),
       treeRoot: isReceive ? treeRoot : treeRootIfSend,
       publicTokenAddr: isPrivate ? 0 : input.tokenAddr,
-      publicAddress: isPrivate ? 0 : input.recipPublicKey,
+      publicAddress: isBurn ? input.recipPublicKey : 0,
       publicAmount: isPrivate ? 0 : input.sendAmount,
       myPublicKey,
     };

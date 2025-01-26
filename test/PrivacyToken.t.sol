@@ -1,0 +1,142 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test, console} from "forge-std/Test.sol";
+import "../contracts/PrivacyToken.sol";
+import {LeafAlreadyExists} from "../contracts/InternalLeanIMT.sol";
+import "./MockPrivacyVerifier.sol";
+import "./MockERC20.sol";
+
+contract PrivacyTokenTest is Test {
+  PrivacyToken public wrapper;
+  MockERC20 public token;
+  uint public tokenAddr;
+  MockPrivacyVerifier public verifier;
+
+  error TestError();
+
+  function setUp() public {
+    token = new MockERC20();
+    tokenAddr = uint256(uint160(address(token)));
+    verifier = new MockPrivacyVerifier();
+    wrapper = new PrivacyToken(address(verifier));
+  }
+
+  function encodeProof(PubSignals memory pubs) internal pure returns(bytes memory) {
+    // 8 zeros as the proof, mock verifier doesn't check
+    return abi.encode(0, 0, 0, 0, 0, 0, 0, 0, pubs);
+  }
+  
+  function firstFourBytes(bytes memory reason) internal pure returns (bytes4) {
+    return bytes4(reason[0]) | (bytes4(reason[1]) >> 8) | (bytes4(reason[2]) >> 16) | (bytes4(reason[3]) >> 24);
+  }
+
+  function test_XMint() public {
+    bytes memory mockNotice = abi.encode(69);
+
+    uint privateAmount = 10;
+    uint publicKey = 5678;
+    uint tokenHash = 345;
+    uint mintNullifier = 234;
+    uint nonceAfterMint = 123;
+    uint encBalanceAfterMint = 456;
+    uint myPublicKey = 567;
+    uint mintHash = 789;
+    uint publicTokenAddr = uint(uint160(address(token)));
+
+    token.mint(privateAmount);
+    token.approve(address(wrapper), privateAmount + 1);
+    assertEq(token.balanceOf(address(this)), privateAmount);
+
+    // Cannot mint more than balance
+    PubSignals memory mintPubs = PubSignals(
+      uint(0), // treeIndex
+      1, // publicMode mint
+      block.chainid,
+      0, // encryptedBalance,
+      0, // oldBalanceNonce,
+      nonceAfterMint, // newBalanceNonce,
+      mintNullifier, // receiveNullifier,
+      tokenHash,
+      encBalanceAfterMint, // newBalance,
+      myPublicKey,
+      0, // treeRoot,
+      mintHash, // hash
+      publicTokenAddr,
+      0, // publicAddr
+      privateAmount + 1 // publicAmount causes fail!
+    );
+
+    try wrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(IERC20Errors.ERC20InsufficientBalance.selector, firstFourBytes(reason));
+    }
+
+    // Now, perform a successful mint
+    mintPubs.publicAmount = privateAmount;
+    wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
+
+    // Ensure that it can't be replayed
+    token.mint(privateAmount);
+    token.approve(address(wrapper), privateAmount + 1);
+
+    // No modification
+    try wrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(PrivacyToken__DuplicateNullifier.selector, firstFourBytes(reason));
+    }
+
+    // Different nullifier
+    mintPubs.receiveNullifier = mintNullifier + 1;
+    try wrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(PrivacyToken__InvalidTreeRoot.selector, firstFourBytes(reason));
+    }
+
+    // Root is updated
+    mintPubs.treeRoot = wrapper.treeRoot(mintPubs.treeIndex);
+    try wrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(LeafAlreadyExists.selector, firstFourBytes(reason));
+    }
+
+    // Hash is changed
+    mintPubs.hash = mintHash + 1;
+    // And it works now
+    wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
+// 
+//     // Accept the incoming tx
+//     PubSignals memory acceptPubs = PubSignals(
+//       uint(0), // treeIndex
+//       1, // publicMode mint
+//       block.chainid,
+//       0, // encryptedBalance,
+//       0, // oldBalanceNonce,
+//       nonceAfterMint, // newBalanceNonce,
+//       mintNullifier, // receiveNullifier,
+//       tokenHash,
+//       encBalance, // newBalance,
+//       myPublicKey,
+//       0, // treeRoot,
+//       mintHash, // hash
+//       publicTokenAddr,
+//       0, // publicAddr
+//       privateAmount + 1 // publicAmount causes fail!
+//     );
+
+    // Send to another account privately
+    // Cannot burn more than the balance
+		// Burn back to public
+//     assertEq(token.balanceOf(address(this)), privateAmount);
+  }
+}
+
+
