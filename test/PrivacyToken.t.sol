@@ -112,30 +112,44 @@ contract PrivacyTokenTest is Test {
     mintPubs.hash = mintHash + 1;
     // And it works now
     wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
-// 
-//     // Accept the incoming tx
-//     PubSignals memory acceptPubs = PubSignals(
-//       uint(0), // treeIndex
-//       1, // publicMode mint
-//       block.chainid,
-//       0, // encryptedBalance,
-//       0, // oldBalanceNonce,
-//       nonceAfterMint, // newBalanceNonce,
-//       mintNullifier, // receiveNullifier,
-//       tokenHash,
-//       encBalance, // newBalance,
-//       myPublicKey,
-//       0, // treeRoot,
-//       mintHash, // hash
-//       publicTokenAddr,
-//       0, // publicAddr
-//       privateAmount + 1 // publicAmount causes fail!
-//     );
 
-    // Send to another account privately
-    // Cannot burn more than the balance
+    // Accept this 2nd incoming tx
+    mintPubs.publicMode = 0;
+    mintPubs.publicTokenAddr = 0;
+    mintPubs.publicAmount = 0;
+    mintPubs.receiveNullifier = mintNullifier + 2;
+    mintPubs.treeRoot = wrapper.treeRoot(mintPubs.treeIndex);
+    mintPubs.hash = mintHash + 2;
+    wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
+
+    // Cannot accept the same incoming tx twice
+    try wrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(PrivacyToken__DuplicateNullifier.selector, firstFourBytes(reason));
+    }
+
 		// Burn back to public
-//     assertEq(token.balanceOf(address(this)), privateAmount);
+    PubSignals memory burnPubs = PubSignals(
+      uint(0), // treeIndex
+      2, // publicMode burn
+      block.chainid,
+      encBalanceAfterMint, // encryptedBalance,
+      nonceAfterMint, // oldBalanceNonce,
+      nonceAfterMint, // newBalanceNonce,
+      mintNullifier + 3, // receiveNullifier,
+      tokenHash,
+      encBalanceAfterMint + 1, // newBalance,
+      myPublicKey,
+      wrapper.treeRoot(mintPubs.treeIndex), // treeRoot,
+      mintHash + 3, // hash
+      publicTokenAddr,
+      uint(uint160(address(this))), // publicAddr
+      privateAmount // publicAmount
+    );
+    wrapper.verifyProof(encodeProof(burnPubs), mockNotice);
+    assertEq(token.balanceOf(address(this)), privateAmount);
   }
 }
 
