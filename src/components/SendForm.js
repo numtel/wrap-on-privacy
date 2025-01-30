@@ -94,6 +94,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       toast.error('Could not load balance!');
       return;
     }
+    // TODO throw error if amount > 252 bits
     const amountParsed = parseUnits(sendAmount, balanceData[3].result);
     if(source === 'public' && recipType === 'private') {
       if(amountParsed > balanceData[1].result) {
@@ -107,12 +108,13 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         return;
       }
       // mint into pool
-      await tryProof(() => sesh.mintTx(
+      await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
         BigInt(inputTokenAddr),
         BigInt(chainId),
         publicClient,
-        recipAddr
+        recipAddr,
+        1, // publicMode=mint
       ));
     } else if(source === 'public' && recipType === 'public') {
       // standard erc20 transfer
@@ -186,7 +188,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
           </label>
           <label className="text">
             <span>Amount:</span>
-            <input ref={primaryInputRef} name="sendAmount" type="number" min="0" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
+            <input ref={primaryInputRef} name="sendAmount" type="number" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
           {balanceData && <p>Max: <TokenDetails address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></p>}
         </fieldset>

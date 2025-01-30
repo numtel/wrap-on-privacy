@@ -4,7 +4,7 @@ import { poseidon6, poseidon5, poseidon2, poseidon1 } from "poseidon-lite";
 
 import {
   randomBigInt,
-} from '../src/rsa.js';
+} from '../src/utils.js';
 
 const circomkit = new Circomkit({
   "verbose": process.env.VERBOSE,
@@ -51,9 +51,9 @@ describe("poseidon-privacy-token", () => {
     return false;
   }));
   it("verifies a mint", runCase(input => {
-    // Input includes the fake receive transaction
+    // Input includes the send transaction (to self in this case)
     // the contract will ignore the balance changes
-    input.recipPublicKey = randomBigInt(MAX_VAL);
+    input.myPrivateKey = randomBigInt(MAX_VAL);
     input.publicMode = 1;
     return true;
   }));
@@ -72,19 +72,20 @@ function runCase(callback) {
   return async () => {
     const tokenAddr = randomBigInt(UINT160);
     const chainId = randomBigInt(UINT32);
-    const myPrivateKey = randomBigInt(MAX_VAL);
+    let myPrivateKey = randomBigInt(MAX_VAL);
     const treeRootIfSend = randomBigInt(MAX_VAL);
     const fakeReceiveHash = randomBigInt(MAX_VAL);
     const sendBlinding = randomBigInt(MAX_VAL);
     const oldBalanceNonce = randomBigInt(MAX_VAL);
     const newBalanceNonce = randomBigInt(MAX_VAL);
-    const myPublicKey = poseidon1([ myPrivateKey ]);
+    let myPublicKey = poseidon1([ myPrivateKey ]);
     const recipPublicKey = myPublicKey;
     const oldBalance = 90000000000n;
     const sendAmount = 1234568n;
 
     const preInput = {
       recipPublicKey,
+      myPrivateKey,
       oldBalance,
       sendAmount,
       publicMode: 0,
@@ -92,6 +93,9 @@ function runCase(callback) {
     // Customize the input for this test case in the callback
     const expectPass = callback(preInput);
 
+    // This value may have changed
+    myPrivateKey = preInput.myPrivateKey;
+    myPublicKey = poseidon1([ myPrivateKey ]);
     const isReceive = myPublicKey === preInput.recipPublicKey;
     const isPrivate = preInput.publicMode === 0;
     const isMint = preInput.publicMode === 1;

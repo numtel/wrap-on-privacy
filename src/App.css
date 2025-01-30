@@ -10,6 +10,7 @@
   --etch: #fff;
   --title1: #009;
   --title2: #9cf;
+  --titleText: #fff;
   --activeBg: #006;
   --textLight: #444;
   --toolbar: #918;
@@ -30,11 +31,12 @@
     --hover: #111;
     --highlight: #111;
     --etch: #555;
-    --title1: #ff6;
-    --title2: #6e8;
-    --activeBg: #62f9fb;
+    --title1: #442;
+    --title2: #162;
+    --titleText: #f5f5f5;
+    --activeBg: #3aa;
     --textLight: #777;
-    --toolbar: #6e8;
+    --toolbar: #395;
     --toolbarDisabled: #484848;
     --toolbarAccent1: #444;
     --toolbarAccent2: #000;
@@ -48,7 +50,7 @@
 
 body { background: var(--title2); color: var(--text); user-select:none;}
 dialog {z-index:1;margin-top:140px; width:100%; max-width:720px; min-width:320px; user-select:none; background: var(--face); color: var(--text); padding: 20px; border-radius: 5px; box-shadow:5px 5px 30px var(--shadow); border: 2px outset var(--highlight);}
-dialog>h2 { padding: 5px 10px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, var(--title1) 0%, var(--title2) 100%); color:var(--highlight); border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
+dialog>h2 { padding: 5px 10px; font-size: 115%; font-weight: bold; background: linear-gradient(90deg, var(--title1) 0%, var(--title2) 100%); color: var(--titleText); border-radius: 5px 5px 0 0; margin: -20px -20px 10px -20px;}
 dialog>.close {position:absolute; top:2px; right:-8px; border-radius:3px 5px 3px 3px; height:2.15rem;}
 
 #connect { position: absolute; top: 14px; right: 10px; }

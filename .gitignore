@@ -7,7 +7,6 @@ main/
 dist/
 cache/
 out/
-public/circuits/
 
 # Ignores development broadcast logs
 /broadcast

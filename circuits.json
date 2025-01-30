@@ -1,38 +1,15 @@
 {
   "privacytoken": {
-    "file": "circuits/privacy-token",
-    "template": "PrivacyToken",
-    "pubs": ["encryptedBalance", "balanceNonce", "newBalanceNonce", "tokenAddr", "chainId"],
-    "params": [
-      32,
-      252,
-      "7237005577332262213973186563042994240829374041602535252466099000494570602495",
-      2048,
-      31,
-      3,
-      13,
-      509,
-      12,
-      252,
-      25,
-      525,
-      5
-    ]
-  },
-  "privatemint": {
-    "file": "circuits/privacy-token",
-    "template": "PrivateMint",
-    "pubs": ["sendAmount", "tokenAddr", "chainId"],
-    "params": [
-      252,
-      "7237005577332262213973186563042994240829374041602535252466099000494570602495",
-      2048,
-      31,
-      509,
-      12,
-      252,
-      25,
-      525
-    ]
+    "file": "circuits/privacy-token-poseidon",
+    "template": "PrivacyToken_Poseidon",
+    "pubs": [
+      "treeIndex",
+      "publicMode",
+      "chainId",
+      "encryptedBalance",
+      "oldBalanceNonce",
+      "newBalanceNonce"
+    ],
+    "params": [252, 32]
   }
 }

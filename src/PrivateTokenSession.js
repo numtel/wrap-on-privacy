@@ -1,7 +1,7 @@
 import { LeanIMT } from "@zk-kit/imt";
 import { getContract } from 'viem';
 import { groth16 } from 'snarkjs';
-import { poseidon2 } from 'poseidon-lite';
+import { poseidon2, poseidon1 } from 'poseidon-lite';
 import NTRU, {
   bigintToBits,
   bitsToBigInt,
@@ -34,6 +34,7 @@ export default class PrivateTokenSession {
         dg: Math.floor(509/3),
         dr: Math.floor(509/3),
       },
+      privateKey: genRandomBabyJubValue().toString(),
       incoming: {},
     }, options);
 
@@ -217,86 +218,50 @@ export default class PrivateTokenSession {
     await this.saveToLocalStorage();
   }
   balanceKeypair() {
-    const {ntru} = this;
-    // privkey for balance symmetric encryption is packed+summed f
-    const privKeyPacked = packOutput(3, ntru.N, ntru.f.map(x=>x===-1 ? 2 : x));
-    const privateKey = privKeyPacked.expected.reduce((sum, cur) => sum + cur, 0n) % SNARK_FIELD_SIZE;
-    // pubkey for encrypted balance storage is hash of the packed f
-    const publicKey = calcMultiHash(privKeyPacked.expected);
-
+    const {privateKey} = this;
+    const publicKey = poseidon1([privateKey]);
     return {publicKey, privateKey};
   }
   balanceViewTx(tokenAddr, chainId) {
+    if(!tokenAddr) return {};
+    const {publicKey, privateKey} = this.balanceKeypair();
     return {
       abi,
       chainId,
       address: byChain[chainId].PrivateToken,
       functionName: 'accounts',
-      args: [tokenAddr, this.balanceKeypair().publicKey],
+      args: [poseidon2([privateKey, tokenAddr]), publicKey],
     };
   }
   registerTx(chainId) {
     const {ntru} = this;
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
+    const {publicKey, privateKey} = this.balanceKeypair();
+    const balancePubBytes = combineBigIntToHex([publicKey], 256);
 
     return {
       abi: registryAbi,
       address: byChain[chainId].KeyRegistry,
       functionName: 'set',
-      args: [ `0x${hBytes}` ],
+      args: [ `0x${hBytes}${balancePubBytes}` ],
     };
 
   }
-  async mintTx(sendAmount, tokenAddr, chainId, client, recipAddr) {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding) {
     const {ntru} = this;
-
-    const registry = getContract({
-      client,
-      abi: registryAbi,
-      address: byChain[chainId].KeyRegistry,
-    });
-    const hBytes = await registry.read.data([recipAddr]);
-    const encSesh = this.fromPackedPublicKey(hBytes);
-    const encrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
-    const sendPacked = packOutput(ntru.q, ntru.N+1, encrypted.inputs.remainderE);
-    const decrypted = ntru.decryptBits(encrypted.value);
-
-    const inputs = {
-      tokenAddr,
-      chainId,
-      sendAmount,
-      recipH: encrypted.inputs.h,
-      sendR: encrypted.inputs.r,
-      quotientE: encrypted.inputs.quotientE,
-      remainderE: encrypted.inputs.remainderE,
-    };
-
-    const proof = await groth16.fullProve(
-      inputs,
-      'circuits/mint/verify_circuit.wasm',
-      'circuits/mint/groth16_pkey.zkey',
-    );
-
-    if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
-
-    const args = getCalldata(proof);
-    return {
-      abi,
-      address: byChain[chainId].PrivateToken,
-      functionName: 'mint',
-      args,
-    };
-  }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, isBurn) {
-    const {ntru} = this;
+    const isMint = publicMode === 1;
+    const isBurn = publicMode === 2;
     // fake empty receive
     const receiveEncrypted = ntru.encryptBits(bigintToBits(0n));
     const receivePacked = packOutput(ntru.q, ntru.N+1, receiveEncrypted.inputs.remainderE);
     const receiveDecrypted = ntru.decryptBits(receiveEncrypted.value);
     const verifyKeys = ntru.verifyKeysInputs();
 
-    const leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
+    let leaves = [];
+    if(chainId in this.incoming && tokenAddress in this.incoming[chainId]) {
+      leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
+    }
     // Index doesn't matter for treeRoot calculation
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, 0);
 
@@ -305,8 +270,23 @@ export default class PrivateTokenSession {
       abi,
       address: byChain[chainId].PrivateToken,
     });
-    const {privateKey, publicKey} = this.balanceKeypair();
-    const account = await contract.read.accounts([tokenAddr, publicKey]);
+    let {privateKey, publicKey} = this.balanceKeypair();
+    console.log(privateKey);
+    let account;
+    if(isMint) {
+      // The balances are ignored when mint,
+      // private key must not match recipPublicKey, so as to not trigger false receive
+      privateKey = genRandomBabyJubValue();
+      // Fake balances to cover the send
+      const oldBalanceNonce = genRandomBabyJubValue();
+      account = [
+        symmetricEncrypt(sendAmount, privateKey, oldBalanceNonce),
+        oldBalanceNonce,
+      ];
+      console.log(privateKey);
+    } else {
+      account = await contract.read.accounts([poseidon2([privateKey, tokenAddr]), publicKey]);
+    }
 
     const registry = getContract({
       client,
@@ -314,11 +294,14 @@ export default class PrivateTokenSession {
       address: byChain[chainId].KeyRegistry,
     });
     let hBytes;
+    let recipPublicKey;
     if(isBurn) {
       // Not used but needs to be calculated
       hBytes = '0x42424242';
     } else {
       hBytes = await registry.read.data([recipAddr]);
+      recipPublicKey = '0x' + hBytes.slice(-64);
+      hBytes = hBytes.slice(0, -64);
     }
     const encSesh = this.fromPackedPublicKey(hBytes);
     const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
@@ -332,48 +315,41 @@ export default class PrivateTokenSession {
     );
 
     const inputs = {
+      sendAmount,
+      recipPublicKey,
+      publicMode,
+      encryptedBalance: account[0],
+      oldBalanceNonce: account[1],
+      newBalanceNonce,
       tokenAddr,
       chainId,
-      encryptedReceive: receivePacked.expected,
-      f: receiveDecrypted.inputs.f,
-      fp: receiveDecrypted.inputs.fp,
-      quotientFp: verifyKeys.fp.inputs.quotientI,
-      remainderFp: verifyKeys.fp.inputs.remainderI,
-      receiveQuotient1: receiveDecrypted.inputs.quotient1,
-      receiveRemainder1: receiveDecrypted.inputs.remainder1,
-      receiveQuotient2: receiveDecrypted.inputs.quotient2,
-      receiveRemainder2: receiveDecrypted.inputs.remainder2,
+      sendBlinding: sendBlinding || genRandomBabyJubValue(),
+      myPrivateKey: privateKey,
+      fakeReceiveHash: genRandomBabyJubValue(),
+      treeRootIfSend: treeRoot,
+      treeIndex: 0,
       treeDepth,
       treeIndices,
       treeSiblings,
-      encryptedBalance: account[0],
-      balanceNonce: account[1],
-      newBalanceNonce,
-      sendAmount,
-      recipH: sendEncrypted.inputs.h,
-      sendR: sendEncrypted.inputs.r,
-      sendQuotient: sendEncrypted.inputs.quotientE,
-      sendRemainder: sendEncrypted.inputs.remainderE,
-      burnAddress: isBurn ? recipAddr : 0,
-      isBurn: isBurn ? 1 : 0,
-      isReceiving: 0,
-      nonReceivingTreeRoot: treeRoot,
     };
+    console.log(inputs, privateKey, poseidon1([privateKey]));
 
     const proof = await groth16.fullProve(
       inputs,
-      'circuits/main/verify_circuit.wasm',
-      'circuits/main/groth16_pkey.zkey',
+      'circuit/verify_circuit.wasm',
+      'circuit/groth16_pkey.zkey',
     );
 
     if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
 
-    const args = getCalldata(proof);
+    const proofData = getCalldata(proof).flat().flat().reduce((out, cur) => out + cur.slice(2), '0x');
+    const noticeData = '0x69';
+    console.log(proofData);
     return {
       abi,
       address: byChain[chainId].PrivateToken,
       functionName: 'verifyProof',
-      args,
+      args: [ proofData, noticeData ],
     };
   }
 }

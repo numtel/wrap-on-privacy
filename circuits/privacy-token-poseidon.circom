@@ -2,6 +2,7 @@ pragma circom 2.1.5;
 
 include "poseidon.circom";
 include "comparators.circom";
+include "gates.circom";
 include "control-flow.circom";
 include "binary-merkle-root.circom";
 include "encryption-symmetric.circom";
@@ -34,9 +35,14 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal output publicAddress;
   signal output publicAmount;
 
+  var isPrivate = IsZero()(publicMode);
+  var isBurn = IsEqual()([publicMode, 2]);
+  var isMint = IsEqual()([publicMode, 1]);
+
   myPublicKey <== Poseidon(1)([myPrivateKey]);
   tokenHash <== Poseidon(2)([myPrivateKey, tokenAddr]);
   var isReceive = IsEqual()([myPublicKey, recipPublicKey]);
+  var isReceiveOrMint = OR()(isReceive, isMint);
 
   // Decrypt balance unless this account has not yet initialized a balance
   var oldBalance = IfElse()(
@@ -50,7 +56,7 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   validSendAmount.in[0] <== oldBalance;
   validSendAmount.in[1] <== sendAmount;
   component isValidSendAmountOrIsReceive = IfElse();
-  isValidSendAmountOrIsReceive.cond <== isReceive;
+  isValidSendAmountOrIsReceive.cond <== isReceiveOrMint;
   isValidSendAmountOrIsReceive.ifTrue <== 0;
   isValidSendAmountOrIsReceive.ifFalse <== validSendAmount.out;
   isValidSendAmountOrIsReceive.out === 0;
@@ -94,8 +100,6 @@ template PrivacyToken_Poseidon(MAX_AMOUNT_BITS, MAX_DEPTH) {
   signal pubSq <== publicMode * publicMode;
   signal idxSq <== treeIndex * treeIndex;
 
-  var isPrivate = IsZero()(publicMode);
-  var isBurn = IsEqual()([publicMode, 2]);
   publicTokenAddr <== IfElse()(isPrivate, 0, tokenAddr);
   publicAddress <== IfElse()(isBurn, recipPublicKey, 0);
   publicAmount <== IfElse()(isPrivate, 0, sendAmount);

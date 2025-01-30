@@ -5,6 +5,12 @@ export const SNARK_FIELD_SIZE = 0x30644e72e131a029b85045b68181585d2833e84879b970
 const MAX_DEPTH = 32;
 
 export function genTree(items, proofIndex) {
+  if(items.length === 0) return {
+    treeSiblings: new Array(MAX_DEPTH).fill(0),
+    treeIndices: new Array(MAX_DEPTH).fill(0),
+    treeDepth: 0,
+    treeRoot: 0,
+  };
   const tree = new LeanIMT((a, b) => poseidon2([a, b]));
 
   items.forEach(item => tree.insert(item));
@@ -43,6 +49,7 @@ export function getCalldata(proof) {
     + ',' +
     publicSignalsCalldata(proof.publicSignals)
     + ']');
+  console.log(calldata);
   return calldata;
 
 }
@@ -124,6 +131,48 @@ export function genRandomBabyJubValue() {
     const privKey = rand % SNARK_FIELD_SIZE;
 
     return privKey;
+}
+
+/**
+ * Generates a random BigInt in the range [0, max], inclusive.
+ *
+ * @param {bigint} max - The maximum possible BigInt value.
+ * @returns {bigint} A cryptographically secure random BigInt in [0, max].
+ */
+export function randomBigInt(max) {
+  if (max < 1n) {
+    throw new RangeError("max must be a positive BigInt.");
+  }
+
+  // Determine how many bits are needed to represent 'max'.
+  const bitLength = max.toString(2).length;
+  // Number of bytes needed to hold those bits:
+  const byteLength = Math.ceil(bitLength / 8);
+
+  // A bitmask to limit the random value to `bitLength` bits.
+  // Example: if bitLength = 5, mask = 0b11111 (which is 31 decimal).
+  const mask = (1n << BigInt(bitLength)) - 1n;
+
+  while (true) {
+    // Get cryptographically secure random bytes
+    const randomBytes = new Uint8Array(byteLength);
+    crypto.getRandomValues(randomBytes);
+
+    // Convert bytes to a BigInt
+    let rand = 0n;
+    for (const byte of randomBytes) {
+      rand = (rand << 8n) | BigInt(byte);
+    }
+
+    // Mask out any extra bits (so that the number of bits is exactly bitLength)
+    rand = rand & mask;
+
+    // Rejection sampling: if the number is within [0, max], return it
+    if (rand <= max) {
+      return rand;
+    }
+    // Otherwise, repeat
+  }
 }
 
 export function symmetricEncrypt(message, key, nonce) {

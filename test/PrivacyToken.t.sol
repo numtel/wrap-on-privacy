@@ -22,9 +22,31 @@ contract PrivacyTokenTest is Test {
     wrapper = new PrivacyToken(address(verifier));
   }
 
-  function encodeProof(PubSignals memory pubs) internal pure returns(bytes memory) {
-    // 8 zeros as the proof, mock verifier doesn't check
-    return abi.encode(0, 0, 0, 0, 0, 0, 0, 0, pubs);
+  function encodeProof(PubSignals memory pubs) internal pure returns(bytes memory out) {
+    // Split to avoid stack-too-deep
+    out = abi.encodePacked(
+      // 8 zeros as the proof, mock verifier doesn't check
+      abi.encode(0, 0, 0, 0, 0, 0, 0, 0),
+      abi.encode(
+        pubs.receiveNullifier,
+        pubs.tokenHash,
+        pubs.newBalance,
+        pubs.myPublicKey,
+        pubs.treeRoot,
+        pubs.hash,
+        pubs.publicTokenAddr,
+        pubs.publicAddress,
+        pubs.publicAmount
+      ),
+      abi.encode(
+        pubs.treeIndex,
+        pubs.publicMode,
+        pubs.chainId,
+        pubs.encryptedBalance,
+        pubs.oldBalanceNonce,
+        pubs.newBalanceNonce
+      )
+    );
   }
   
   function firstFourBytes(bytes memory reason) internal pure returns (bytes4) {
@@ -35,7 +57,6 @@ contract PrivacyTokenTest is Test {
     bytes memory mockNotice = abi.encode(69);
 
     uint privateAmount = 10;
-    uint publicKey = 5678;
     uint tokenHash = 345;
     uint mintNullifier = 234;
     uint nonceAfterMint = 123;

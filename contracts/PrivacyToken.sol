@@ -93,16 +93,16 @@ contract PrivacyToken {
     uint[2] memory _pC = [result[6], result[7]];
     uint[15] memory _pubSignals = [
       result[8], result[9], result[10], result[11], result[12], result[13],
-      result[14], result[15], result[16], result[17], result[18], result[19],
-      result[20], result[21], result[22]
+      result[14], result[15], result[16],
+      result[17], result[18], result[19], result[20], result[21], result[22]
     ];
     if(!verifier.verifyProof(_pA, _pB, _pC, _pubSignals)) {
       revert PrivacyToken__InvalidProof();
     }
     return PubSignals(
+      result[17], result[18], result[19], result[20], result[21], result[22],
       result[8], result[9], result[10], result[11], result[12], result[13],
-      result[14], result[15], result[16], result[17], result[18], result[19],
-      result[20], result[21], result[22]
+      result[14], result[15], result[16]
     );
   }
 
@@ -121,24 +121,24 @@ contract PrivacyToken {
     // Set this nullifier
     receivedHashes[pubs.receiveNullifier] = true;
 
-    // Update the user's balance
-    uint encBalance = accounts[pubs.tokenHash][pubs.myPublicKey].encryptedBalance;
-    uint curNonce = accounts[pubs.tokenHash][pubs.myPublicKey].nonce;
-    if(encBalance != pubs.encryptedBalance) {
-      revert PrivacyToken__InvalidBalance();
-    }
-    if(curNonce != pubs.oldBalanceNonce) {
-      revert PrivacyToken__InvalidBalanceNonce();
-    }
-    if(pubs.newBalance == 0) {
-      revert PrivacyToken__InvalidNewBalance();
-    }
-    if(pubs.newBalanceNonce == 0) {
-      revert PrivacyToken__InvalidNewBalanceNonce();
-    }
-
-    // Balance is updated for all modes except mint
+    // Update the user's balance if it's not a mint
     if(pubs.publicMode != 1) {
+      uint encBalance = accounts[pubs.tokenHash][pubs.myPublicKey].encryptedBalance;
+      uint curNonce = accounts[pubs.tokenHash][pubs.myPublicKey].nonce;
+
+      if(encBalance != pubs.encryptedBalance) {
+        revert PrivacyToken__InvalidBalance();
+      }
+      if(curNonce != pubs.oldBalanceNonce) {
+        revert PrivacyToken__InvalidBalanceNonce();
+      }
+      if(pubs.newBalance == 0) {
+        revert PrivacyToken__InvalidNewBalance();
+      }
+      if(pubs.newBalanceNonce == 0) {
+        revert PrivacyToken__InvalidNewBalanceNonce();
+      }
+
       accounts[pubs.tokenHash][pubs.myPublicKey].encryptedBalance = pubs.newBalance;
       accounts[pubs.tokenHash][pubs.myPublicKey].nonce = pubs.newBalanceNonce;
     }
