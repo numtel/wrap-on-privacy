@@ -19,12 +19,6 @@ export default function AboutForm({ setShowAbout, showAbout }) {
       chainId,
       functionName: 'verifier',
     },
-    {
-      address: byChain[chainId].PrivateToken,
-      abi,
-      chainId,
-      functionName: 'mintVerifier',
-    },
   ], watch:false});
 
   return (<Dialog show={showAbout} setShow={setShowAbout}>
@@ -42,10 +36,7 @@ export default function AboutForm({ setShowAbout, showAbout }) {
     </div>
     {data && <div className="flex items-center flex-col space-y-2 mt-4">
       <a href={`https://circuitscan.org/chain/${chainId}/address/${data[0].result}`} className="link" rel="noopener" target="_blank">
-        Main Verifier on Circuitscan
-      </a>
-      <a href={`https://circuitscan.org/chain/${chainId}/address/${data[1].result}`} className="link" rel="noopener" target="_blank">
-        Mint Verifier on Circuitscan
+        Verifier on Circuitscan
       </a>
     </div>}
   </Dialog>);
