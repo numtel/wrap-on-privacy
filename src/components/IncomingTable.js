@@ -15,7 +15,9 @@ import TimeView from './TimeView.js';
 import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
+// TODO proper support for treeIndex on scanForIncoming
 export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
+  const treeIndex = 0;
   const account = useAccount();
   const chainId = account.chainId || defaultChain;
   const publicClient = usePublicClient({ chainId });
@@ -27,34 +29,34 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
 
   useEffect(() => {
     async function doAsync() {
-      const params = await sesh.scanForIncoming(publicClient, activePool, chainId);
+      const params = await sesh.scanForIncoming(publicClient, treeIndex, chainId);
       const contracts = new Array(params.count - params.oldCount).fill(0).map((_, i) => [
         {
           abi,
           chainId,
           address: byChain[chainId].PrivateToken,
           functionName: 'encryptedSends',
-          args: [ activePool, i + params.oldCount ],
+          args: [ treeIndex, i + params.oldCount ],
         },
         {
           abi,
           chainId,
           address: byChain[chainId].PrivateToken,
           functionName: 'sendTimes',
-          args: [ activePool, i + params.oldCount ],
+          args: [ treeIndex, i + params.oldCount ],
         },
         {
           abi,
           chainId,
           address: byChain[chainId].PrivateToken,
           functionName: 'sendAccounts',
-          args: [ activePool, i + params.oldCount ],
+          args: [ treeIndex, i + params.oldCount ],
         },
       ]).flat();
       setContracts(contracts);
     }
-    activePool && sesh && doAsync();
-  }, [refreshCounter, activePool]);
+    sesh && doAsync();
+  }, [refreshCounter, treeIndex]);
 
   useEffect(() => {
     if(isSuccess) {
@@ -62,7 +64,9 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
       let lastIndex = -1;
       for(let i = 0; i < data.length; i+=3) {
         // TODO have to refresh page if changing accounts
+        console.log(data[i]);
         const decrypted = sesh.decryptIncoming(data[i].result);
+        console.log(decrypted);
         const index = i/3 + contracts[0].args[1];
         lastIndex = index;
         if(decrypted.value) {
@@ -84,7 +88,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
           });
         }
       }
-      sesh.setLastScanned(activePool, chainId, lastIndex + 1, cleanData);
+      sesh.setLastScanned(treeIndex, chainId, lastIndex + 1, cleanData);
       setCleanData(cleanData);
     }
   }, [isSuccess]);
@@ -120,13 +124,14 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
     writeContract(tx);
   }
 
-  if(sesh && activePool && (chainId in sesh.incoming) && (activePool in sesh.incoming[chainId])) return (
+  console.log(sesh);
+  if(sesh && (chainId in sesh.incoming) && (treeIndex in sesh.incoming[chainId])) return (
     <GenericSortableTable
       columns={[
         {key:'index', label: 'Index'},
         {key:'decrypted', label: 'Incoming Amount', render: (item) => (
           <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
-            <TokenDetails amount={item.decrypted} address={activePool} {...{chainId}} />
+            <TokenDetails amount={item.decrypted} address={'0x2345'} {...{chainId}} />
           </button>
         )},
         {key:'time', label: 'Time', render: (item) => (
@@ -138,14 +143,14 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
           </a>
         )},
       ]}
-      data={sesh.incoming[chainId][activePool].found.filter(x => 'decrypted' in x)}
+      data={sesh.incoming[chainId][0].found.filter(x => 'decrypted' in x)}
     />
   );
   else return (
     <GenericSortableTable
       disallowSelection={true}
       columns={[{key:'x', label: ''}]}
-      data={[{x:isLoading ? 'Scanning for incoming transactions...' : isError ? 'Error!' : 'Select a pool to view incoming transactions...'}]}
+      data={[{x:isLoading ? 'Scanning for incoming transactions...' : isError ? 'Error!' : 'Nothing found!'}]}
     />
   );
 }

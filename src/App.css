@@ -101,9 +101,10 @@ p { margin-bottom:15px; }
 .menubar>button.active {border:1px inset var(--etch);}
 .menubar .menu {border: 1px outset var(--etch); border-radius:2px; box-shadow:inset 0 -1px 2px var(--toolbarAccent2), inset 0 1px 2px var(--highlight), 1px 1px 20px var(--shadow); padding:8px 2px 8px 2px;top:33px; left:0px; position:absolute; margin:0; width:fit-content; min-width:100px; z-index:999;}
 .menubar .menu.active {}
-.menubar .menu button {display:block; text-align:left; padding:2px 20px; width:100%;text-wrap:nowrap;}
+.menubar .menu button {display:block; position:relative; text-align:left; padding:2px 25px; width:100%;text-wrap:nowrap;}
 .menubar .menu button:hover:not(:disabled) {background:var(--activeBg); color:var(--highlight);}
 .menubar .menu button:disabled {color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight);}
+.menubar .menu button svg { position:absolute; left:5px; top: 5px; }
 
 .status-bar {display:flex; flex-direction:row;background:var(--face);box-shadow:inset 0 -1px 2px #666, inset 0 1px 2px var(--highlight); border-top:1px solid var(--textLight); padding:3px; position:sticky; bottom:0;}
 .status-bar>div { padding:0px 5px; border:2px inset var(--highlight); flex:1;}

@@ -100,15 +100,16 @@ export default class PrivateTokenSession {
     });
     return newSesh;
   }
-  async scanForIncoming(client, tokenAddr, chainId) {
+  async scanForIncoming(client, treeIndex, chainId) {
     const contract = getContract({
       client,
       abi,
       address: byChain[chainId].PrivateToken,
     });
-    const count = Number(await contract.read.sendCount([tokenAddr]));
+    const count = Number(await contract.read.sendCount([treeIndex]));
     if(!(chainId in this.incoming)) this.incoming[chainId] = {};
-    const oldCount = tokenAddr in this.incoming[chainId] ? this.incoming[chainId][tokenAddr].count : 0;
+    const oldCount = treeIndex in this.incoming[chainId] ? this.incoming[chainId][treeIndex].count : 0;
+    console.log(count, oldCount);
     return { count, oldCount };
   }
   decryptIncoming(encValue) {
@@ -207,13 +208,13 @@ export default class PrivateTokenSession {
       args,
     };
   }
-  async setLastScanned(tokenAddr, chainId, count, newItems) {
+  async setLastScanned(treeIndex, chainId, count, newItems) {
     if(!(chainId in this.incoming)) this.incoming[chainId] = {};
-    if(!(tokenAddr in this.incoming[chainId])) {
-      this.incoming[chainId][tokenAddr] = { count, found: newItems };
+    if(!(treeIndex in this.incoming[chainId])) {
+      this.incoming[chainId][treeIndex] = { count, found: newItems };
     } else {
-      this.incoming[chainId][tokenAddr].count = count;
-      newItems.forEach(item => this.incoming[chainId][tokenAddr].found.push(item));
+      this.incoming[chainId][treeIndex].count = count;
+      newItems.forEach(item => this.incoming[chainId][treeIndex].found.push(item));
     }
     await this.saveToLocalStorage();
   }
@@ -343,6 +344,7 @@ export default class PrivateTokenSession {
     if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
 
     const proofData = getCalldata(proof).flat().flat().reduce((out, cur) => out + cur.slice(2), '0x');
+    // TODO generate correct noticeData
     const noticeData = '0x69';
     console.log(proofData);
     return {

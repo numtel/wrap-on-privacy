@@ -14,15 +14,16 @@ export function App() {
   const [sesh, setSesh] = useState(null);
   const [activePool, setActivePool] = useState(null);
   const [refreshCounter, setRefreshStatus] = useState(0);
+  const [curView, setCurView] = useState(0);
   return (<>
     <WalletWrapper>
       <Toaster />
       <div id="main">
         <div className="top-border" />
-        <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool}} />
+        <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
         <div className="panel">
-          <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />
-          {sesh && <IncomingTable {...{sesh, activePool, refreshCounter}} />}
+          {curView === 0 && <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />}
+          {curView === 1 && <IncomingTable {...{sesh, activePool, refreshCounter}} />}
         </div>
         <StatusBar {...{sesh, refreshCounter, activePool}} />
       </div>

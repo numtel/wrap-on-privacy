@@ -15,6 +15,9 @@ import {
   FolderArrowDownIcon,
   WalletIcon,
 } from '@heroicons/react/24/solid';
+import {
+  CheckIcon,
+} from '@heroicons/react/16/solid';
 
 import Dialog from './Dialog.js';
 import AboutForm from './AboutForm.js';
@@ -24,7 +27,7 @@ import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
 
-export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool }) {
+export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
   const account = useAccount();
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
@@ -74,7 +77,19 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool })
       {
         label: 'Refresh',
         onClick: () => setRefreshStatus(x => x+1),
-      }
+      },
+      { sep: true },
+      {
+        label: 'Token List',
+        checked: curView === 0,
+        onClick: () => setCurView(0),
+      },
+      {
+        label: 'Incoming Transactions',
+        checked: curView === 1,
+        onClick: () => setCurView(1),
+        disabled: !sesh,
+      },
     ],
     Help: [
       {
@@ -152,6 +167,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool })
                       item.onClick();
                     }}
                   >
+                    {item.checked && <CheckIcon className="h-4 w-4 block" />}
                     {item.label}
                   </button>
                 )
