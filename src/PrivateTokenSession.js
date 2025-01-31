@@ -1,12 +1,14 @@
 import { LeanIMT } from "@zk-kit/imt";
 import { getContract } from 'viem';
 import { groth16 } from 'snarkjs';
-import { poseidon2, poseidon1 } from 'poseidon-lite';
+import { poseidon5, poseidon2, poseidon1 } from 'poseidon-lite';
 import NTRU, {
   bigintToBits,
   bitsToBigInt,
   packOutput,
   unpackInput,
+  expandArray,
+  trimPolynomial,
 } from 'ntru-circom';
 
 import {
@@ -17,6 +19,7 @@ import {
   symmetricEncrypt,
   symmetricDecrypt,
   downloadTextFile,
+  randomBigInt,
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
 import registryAbi from './abi/KeyRegistry.json';
@@ -28,11 +31,13 @@ export default class PrivateTokenSession {
   constructor(options) {
     Object.assign(this, {
       ntru: {
-        N: 509,
+        // Need at least 664 bits for 252 (blinding) + 252 (amount) + 160 (token)
+        // Therefore, use NTRU 192-bit security margin parameters
+        N: 677,
         q: 2048,
-        df: Math.floor(509/3),
-        dg: Math.floor(509/3),
-        dr: Math.floor(509/3),
+        df: Math.floor(677/3),
+        dg: Math.floor(677/3),
+        dr: Math.floor(677/3),
       },
       privateKey: genRandomBabyJubValue().toString(),
       incoming: {},
@@ -112,101 +117,37 @@ export default class PrivateTokenSession {
     console.log(count, oldCount);
     return { count, oldCount };
   }
-  decryptIncoming(encValue) {
+  decryptIncoming(encValue, chainId) {
     // First need to calculate the maxOutputBits for a public key packing
     const {ntru} = this;
 
-    const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
-    const unpacked = splitHexToBigInt(encValue, 256);
-    // For small (test size) keys, the value is shorter than one element
-    const toRaw = unpackInput(ntru.q, Math.min(ntru.N * hPacked.maxInputBits, hPacked.maxOutputBits), unpacked);
-    const decrypted = ntru.decryptBits(toRaw.unpacked);
-    const receiveTxHash = calcMultiHash(unpacked);
+    const noteDataRev = splitHexToBigInt(encValue, Math.log2(ntru.q)+1).map(x=>Number(x));
+    const decrypted = ntru.decryptBits(trimPolynomial(noteDataRev));
 
     // Invalid decryption
     const failed = decrypted.value.some(x=>!(x===0 || x===1));
+    if(failed) return null;
 
-    return {
-      value: failed ? null : bitsToBigInt(decrypted.value.slice().reverse()),
-      encBits: toRaw.unpacked,
-      receiveTxHash,
-      unpacked,
-    };
+    const tokenAddr = bitsToBigInt(decrypted.value.slice(0, 160).reverse());
+    const sendAmount = bitsToBigInt(decrypted.value.slice(160, 160+256).reverse());
+    const sendBlinding = bitsToBigInt(decrypted.value.slice(160+256, 160 + 256*2).reverse());
+
+    let {publicKey} = this.balanceKeypair();
+    const hash = poseidon5([ tokenAddr, chainId, sendAmount, sendBlinding, publicKey ]);
+
+    return {tokenAddr, sendAmount, sendBlinding, hash};
   }
-  async receiveTx(tokenAddr, chainId, encBits, index, unpacked, client, receiveAmount) {
-    const {ntru} = this;
-    const receiveDecrypted = ntru.decryptBits(encBits);
-    const verifyKeys = ntru.verifyKeysInputs();
-
-    const leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
-    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, index);
-
-    const contract = getContract({
-      client,
-      abi,
-      address: byChain[chainId].PrivateToken,
-    });
-    const {privateKey, publicKey} = this.balanceKeypair();
-    const account = await contract.read.accounts([tokenAddr, publicKey]);
-
-    const sendAmount = 0n;
-    // TODO this needs to be a random value of full length because otherwise it's obvious in the tx data
-    const encSesh = this.fromPackedPublicKey('0x42424242424242424242424242');
-    const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
-
-    const newBalanceNonce = genRandomBabyJubValue();
-    const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
-    const finalBalance = symmetricEncrypt(
-      balance + BigInt(receiveAmount) - sendAmount,
-      privateKey,
-      newBalanceNonce
-    );
-
-    const inputs = {
-      tokenAddr,
+  async receiveTx(chainId, treeIndex, item, client) {
+    return await this.sendPrivateTx(
+      BigInt(item.sendAmount),
+      BigInt(item.tokenAddr),
       chainId,
-      encryptedReceive: unpacked,
-      f: receiveDecrypted.inputs.f,
-      fp: receiveDecrypted.inputs.fp,
-      quotientFp: verifyKeys.fp.inputs.quotientI,
-      remainderFp: verifyKeys.fp.inputs.remainderI,
-      receiveQuotient1: receiveDecrypted.inputs.quotient1,
-      receiveRemainder1: receiveDecrypted.inputs.remainder1,
-      receiveQuotient2: receiveDecrypted.inputs.quotient2,
-      receiveRemainder2: receiveDecrypted.inputs.remainder2,
-      treeDepth,
-      treeIndices,
-      treeSiblings,
-      encryptedBalance: account[0],
-      balanceNonce: account[1],
-      newBalanceNonce,
-      sendAmount,
-      recipH: sendEncrypted.inputs.h,
-      sendR: sendEncrypted.inputs.r,
-      sendQuotient: sendEncrypted.inputs.quotientE,
-      sendRemainder: sendEncrypted.inputs.remainderE,
-      burnAddress: 0,
-      isBurn: 0,
-      isReceiving: 1,
-      // This value will not be output when it is receiving
-      nonReceivingTreeRoot: 0n,
-    };
-
-    const proof = await groth16.fullProve(
-      inputs,
-      'circuits/main/verify_circuit.wasm',
-      'circuits/main/groth16_pkey.zkey',
+      client,
+      null, // recipAddr,
+      0, // publicMode,
+      BigInt(item.sendBlinding),
+      treeIndex
     );
-
-    if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
-
-    const args = getCalldata(proof);
-    return {
-      abi,
-      address: byChain[chainId].PrivateToken,
-      functionName: 'verifyProof',
-      args,
-    };
   }
   async setLastScanned(treeIndex, chainId, count, newItems) {
     if(!(chainId in this.incoming)) this.incoming[chainId] = {};
@@ -249,19 +190,26 @@ export default class PrivateTokenSession {
     };
 
   }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding) {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex) {
     const {ntru} = this;
     const isMint = publicMode === 1;
     const isBurn = publicMode === 2;
-    // fake empty receive
-    const receiveEncrypted = ntru.encryptBits(bigintToBits(0n));
-    const receivePacked = packOutput(ntru.q, ntru.N+1, receiveEncrypted.inputs.remainderE);
-    const receiveDecrypted = ntru.decryptBits(receiveEncrypted.value);
-    const verifyKeys = ntru.verifyKeysInputs();
+
+    treeIndex = treeIndex || 0;
+    sendBlinding = sendBlinding || genRandomBabyJubValue();
+    const noteMsg = [
+      expandArray(bigintToBits(tokenAddr), 160, 0),
+      expandArray(bigintToBits(sendAmount), 256, 0),
+      expandArray(bigintToBits(sendBlinding), 256, 0),
+    ].flat();
+    // Pad out the message with ones to ensure it's always the full length
+    while(noteMsg.length < ntru.N) {
+      noteMsg.push(1);
+    }
 
     let leaves = [];
-    if(chainId in this.incoming && tokenAddress in this.incoming[chainId]) {
-      leaves = this.incoming[chainId][tokenAddr].found.map(item => BigInt(item.receiveTxHash));
+    if(chainId in this.incoming && treeIndex in this.incoming[chainId]) {
+      leaves = this.incoming[chainId][treeIndex].found.map(item => BigInt(item.receiveTxHash));
     }
     // Index doesn't matter for treeRoot calculation
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, 0);
@@ -272,7 +220,6 @@ export default class PrivateTokenSession {
       address: byChain[chainId].PrivateToken,
     });
     let {privateKey, publicKey} = this.balanceKeypair();
-    console.log(privateKey);
     let account;
     if(isMint) {
       // The balances are ignored when mint,
@@ -284,7 +231,6 @@ export default class PrivateTokenSession {
         symmetricEncrypt(sendAmount, privateKey, oldBalanceNonce),
         oldBalanceNonce,
       ];
-      console.log(privateKey);
     } else {
       account = await contract.read.accounts([poseidon2([privateKey, tokenAddr]), publicKey]);
     }
@@ -296,16 +242,23 @@ export default class PrivateTokenSession {
     });
     let hBytes;
     let recipPublicKey;
-    if(isBurn) {
-      // Not used but needs to be calculated
+    if(!recipAddr) {
+      const selfPubs = this.registerTx(chainId).args[0];
+      recipPublicKey = '0x' + selfPubs.slice(-64);
+      hBytes = selfPubs.slice(0, -64);
+    } else if(isBurn) {
+      // TODO: Not used but needs to be calculated
       hBytes = '0x42424242';
+      recipPublicKey = '0x42424242';
     } else {
       hBytes = await registry.read.data([recipAddr]);
       recipPublicKey = '0x' + hBytes.slice(-64);
       hBytes = hBytes.slice(0, -64);
     }
     const encSesh = this.fromPackedPublicKey(hBytes);
-    const sendEncrypted = encSesh.ntru.encryptBits(bigintToBits(sendAmount));
+    // Receive proofs send a randomized, useless message
+    const noteDataRaw = encSesh.ntru.encryptBits(!recipAddr ? bigintToBits(randomBigInt(2n ** BigInt(ntru.N))) : noteMsg);
+    const noteDataHex = combineBigIntToHex(noteDataRaw.value.map(x=>BigInt(x)), Math.log2(ntru.q)+1);
 
     const newBalanceNonce = genRandomBabyJubValue();
     const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
@@ -324,7 +277,7 @@ export default class PrivateTokenSession {
       newBalanceNonce,
       tokenAddr,
       chainId,
-      sendBlinding: sendBlinding || genRandomBabyJubValue(),
+      sendBlinding,
       myPrivateKey: privateKey,
       fakeReceiveHash: genRandomBabyJubValue(),
       treeRootIfSend: treeRoot,
@@ -351,7 +304,7 @@ export default class PrivateTokenSession {
       abi,
       address: byChain[chainId].PrivateToken,
       functionName: 'verifyProof',
-      args: [ proofData, noticeData ],
+      args: [ proofData, '0x' + noteDataHex ],
     };
   }
 }

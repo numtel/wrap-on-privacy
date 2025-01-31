@@ -51,6 +51,7 @@ contract PrivacyToken {
   // keyed by tree index
   mapping(uint256 => LeanIMTData) sendTree;
   mapping(uint256 => bytes[]) public encryptedSends;
+  mapping(uint256 => uint256[]) public sendHashes;
   mapping(uint256 => uint256[]) public sendTimes;
   mapping(uint256 => address[]) public sendAccounts;
   // keyed by tokenHash, publicKey
@@ -171,6 +172,7 @@ contract PrivacyToken {
       encryptedSends[pubs.treeIndex].push(noticeData);
       sendTimes[pubs.treeIndex].push(block.timestamp);
       sendAccounts[pubs.treeIndex].push(msg.sender);
+      sendHashes[pubs.treeIndex].push(pubs.hash);
       sendTree[pubs.treeIndex]._insert(pubs.hash);
     }
 

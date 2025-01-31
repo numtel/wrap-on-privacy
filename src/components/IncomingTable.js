@@ -52,6 +52,13 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
           functionName: 'sendAccounts',
           args: [ treeIndex, i + params.oldCount ],
         },
+        {
+          abi,
+          chainId,
+          address: byChain[chainId].PrivateToken,
+          functionName: 'sendHashes',
+          args: [ treeIndex, i + params.oldCount ],
+        },
       ]).flat();
       setContracts(contracts);
     }
@@ -62,29 +69,26 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
     if(isSuccess) {
       const cleanData = [];
       let lastIndex = -1;
-      for(let i = 0; i < data.length; i+=3) {
+      for(let i = 0; i < data.length; i+=4) {
         // TODO have to refresh page if changing accounts
-        console.log(data[i]);
-        const decrypted = sesh.decryptIncoming(data[i].result);
-        console.log(decrypted);
+        const decrypted = sesh.decryptIncoming(data[i].result, chainId);
         const index = i/3 + contracts[0].args[1];
         lastIndex = index;
-        if(decrypted.value) {
+        if(decrypted && decrypted.hash === data[i+3].result) {
           cleanData.push({
             index,
-            receiveTxHash: decrypted.receiveTxHash.toString(10),
-            unpacked: decrypted.unpacked.map(x=>x.toString(10)),
-            decrypted: decrypted.value.toString(10),
+            receiveTxHash: data[i+3].result.toString(10),
+            sendAmount: decrypted.sendAmount.toString(10),
+            sendBlinding: decrypted.sendBlinding.toString(10),
+            tokenAddr: '0x' + decrypted.tokenAddr.toString(16),
             time: Number(data[i+1].result),
             sender: data[i+2].result,
-            encrypted: decrypted.encBits,
-            raw: data[i].result,
           });
         } else {
           // Save space on the tree leaves that aren't for this account
           cleanData.push({
             index,
-            receiveTxHash: decrypted.receiveTxHash.toString(10),
+            receiveTxHash: data[i+3].result.toString(10),
           });
         }
       }
@@ -118,7 +122,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
 
   async function acceptIncoming(item) {
     toast.loading('Generating proof...');
-    const tx = await sesh.receiveTx(activePool, chainId, item.encrypted, item.index, item.unpacked, publicClient, item.decrypted);
+    const tx = await sesh.receiveTx(chainId, treeIndex, item, publicClient);
     toast.dismiss();
     toast.loading('Waiting for transaction...');
     writeContract(tx);
@@ -131,7 +135,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
         {key:'index', label: 'Index'},
         {key:'decrypted', label: 'Incoming Amount', render: (item) => (
           <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
-            <TokenDetails amount={item.decrypted} address={'0x2345'} {...{chainId}} />
+            <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
           </button>
         )},
         {key:'time', label: 'Time', render: (item) => (
@@ -143,7 +147,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
           </a>
         )},
       ]}
-      data={sesh.incoming[chainId][0].found.filter(x => 'decrypted' in x)}
+      data={sesh.incoming[chainId][0].found.filter(x => 'sendAmount' in x)}
     />
   );
   else return (
