@@ -1,6 +1,6 @@
 # Wrap on Privacy
 
-An attempt to move beyond "note passing" as introduced by Tornado Cash by incorporating public key encryption using [the NTRU algorithm](https://github.com/numtel/ntru-circom)
+Transaction notes encrypted using [post-quantum NTRU algorithm](https://github.com/numtel/ntru-circom)
 
 Buy a coffee without exposing your entire financial history!
 
@@ -25,7 +25,6 @@ $ npm run test:contracts
 
 # Compile circuits before attempting to deploy them
 $ npm run compile:circuit
-$ npm run compile:mint-circuit
 
 # Deploy the circuit verifier on chain
 $ circuitscan login <apiKey>
@@ -39,11 +38,6 @@ $ npm run deploy:contract
 # Also, the key registry contract may be deployed
 $ npm run deploy:registry-contract
 ```
-
-> [!IMPORTANT]
-> To generate proofs locally, you'll need to download the build archives from Circuitscan and place the zkey/wasm files in `public/circuits/main` and `public/circuits/mint`. They're too big to put in the git repo!
->
-> Links to the verifiers on Circuitscan are in the "Help > About" dialog.
 
 ## Transfer Types
 
@@ -63,10 +57,17 @@ In this system, the recipient and amount sent are obscured. While it will still 
 Property | Public | Private
 ---------|--------|------------------
 Source account | :white_check_mark: | &nbsp;
+Token Type | &nbsp; | :white_check_mark:
 Transaction Amount | &nbsp; | :white_check_mark:
 Recipient account | &nbsp; | :white_check_mark:
 
 Also, there is no public distinction between sending and receiving an incoming transaction since they use the same proof.
+
+> [!IMPORTANT]
+> Token type is pseudonymous hash `poseidon2([private key, token address])`
+>
+> A public transaction on an account (mint or burn) will reveal the link between token type and the hash so don't use the same account if you want that privacy quality.
+
 
 ## Login vs Connect Wallet
 
