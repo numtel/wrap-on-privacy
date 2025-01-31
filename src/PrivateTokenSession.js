@@ -114,7 +114,6 @@ export default class PrivateTokenSession {
     const count = Number(await contract.read.sendCount([treeIndex]));
     if(!(chainId in this.incoming)) this.incoming[chainId] = {};
     const oldCount = treeIndex in this.incoming[chainId] ? this.incoming[chainId][treeIndex].count : 0;
-    console.log(count, oldCount);
     return { count, oldCount };
   }
   decryptIncoming(encValue, chainId) {
@@ -146,7 +145,8 @@ export default class PrivateTokenSession {
       null, // recipAddr,
       0, // publicMode,
       BigInt(item.sendBlinding),
-      treeIndex
+      treeIndex,
+      item.index,
     );
   }
   async setLastScanned(treeIndex, chainId, count, newItems) {
@@ -190,7 +190,7 @@ export default class PrivateTokenSession {
     };
 
   }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex) {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex, itemIndex) {
     const {ntru} = this;
     const isMint = publicMode === 1;
     const isBurn = publicMode === 2;
@@ -211,8 +211,8 @@ export default class PrivateTokenSession {
     if(chainId in this.incoming && treeIndex in this.incoming[chainId]) {
       leaves = this.incoming[chainId][treeIndex].found.map(item => BigInt(item.receiveTxHash));
     }
-    // Index doesn't matter for treeRoot calculation
-    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, 0);
+    // itemIndex not needed for send proofs
+    const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, itemIndex || 0);
 
     const contract = getContract({
       client,
@@ -247,9 +247,10 @@ export default class PrivateTokenSession {
       recipPublicKey = '0x' + selfPubs.slice(-64);
       hBytes = selfPubs.slice(0, -64);
     } else if(isBurn) {
-      // TODO: Not used but needs to be calculated
-      hBytes = '0x42424242';
-      recipPublicKey = '0x42424242';
+      // Not used but needs to be calculated
+      const selfPubs = this.registerTx(chainId).args[0];
+      recipPublicKey = recipAddr;
+      hBytes = selfPubs.slice(0, -64);
     } else {
       hBytes = await registry.read.data([recipAddr]);
       recipPublicKey = '0x' + hBytes.slice(-64);
@@ -286,7 +287,6 @@ export default class PrivateTokenSession {
       treeIndices,
       treeSiblings,
     };
-    console.log(inputs, privateKey, poseidon1([privateKey]));
 
     const proof = await groth16.fullProve(
       inputs,
@@ -297,9 +297,6 @@ export default class PrivateTokenSession {
     if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
 
     const proofData = getCalldata(proof).flat().flat().reduce((out, cur) => out + cur.slice(2), '0x');
-    // TODO generate correct noticeData
-    const noticeData = '0x69';
-    console.log(proofData);
     return {
       abi,
       address: byChain[chainId].PrivateToken,

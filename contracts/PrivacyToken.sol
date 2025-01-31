@@ -78,16 +78,7 @@ contract PrivacyToken {
   function _verifyProof(bytes memory data) internal view returns (PubSignals memory) {
     require(data.length >= 23 * 32, "Insufficient bytes length");
 
-    uint256[23] memory result;
-
-    for (uint256 i = 0; i < 23; i++) {
-        uint256 word;
-        assembly {
-            // Load 32 bytes from `data` starting at offset `32 * i + 32` (data offset starts at 32)
-            word := mload(add(data, add(32, mul(i, 32))))
-        }
-        result[i] = word;
-    }
+    uint256[23] memory result = abi.decode(data, (uint256[23]));
 
     uint[2] memory _pA = [result[0], result[1]];
     uint[2][2] memory _pB = [[result[2], result[3]], [result[4], result[5]]];

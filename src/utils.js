@@ -49,7 +49,6 @@ export function getCalldata(proof) {
     + ',' +
     publicSignalsCalldata(proof.publicSignals)
     + ']');
-  console.log(calldata);
   return calldata;
 
 }

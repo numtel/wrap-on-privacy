@@ -72,7 +72,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
       for(let i = 0; i < data.length; i+=4) {
         // TODO have to refresh page if changing accounts
         const decrypted = sesh.decryptIncoming(data[i].result, chainId);
-        const index = i/3 + contracts[0].args[1];
+        const index = i/4 + contracts[0].args[1];
         lastIndex = index;
         if(decrypted && decrypted.hash === data[i+3].result) {
           cleanData.push({
@@ -128,7 +128,6 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
     writeContract(tx);
   }
 
-  console.log(sesh);
   if(sesh && (chainId in sesh.incoming) && (treeIndex in sesh.incoming[chainId])) return (
     <GenericSortableTable
       columns={[

@@ -13,8 +13,7 @@
     "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
     "deploy:contract": "VERIFIER_ADDRESS=0x86371a665be9333dd9d4be59b49ff41942b8115a forge script script/PrivacyToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
     "deploy:registry-contract": "forge script script/KeyRegistry.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
-    "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/ --exclude \"*.wasm\" --exclude \"*.zkey\"",
-    "deploy:frontend-zkey": "aws s3 sync public/circuits/ s3://wrap.clonk.me/circuits/"
+    "deploy:frontend": "rm -rf dist/ && vite build && aws s3 sync dist/ s3://wrap.clonk.me/"
   },
   "dependencies": {
     "@crema-labs/aes-circom": "0.0.2",

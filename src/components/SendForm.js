@@ -95,6 +95,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       return;
     }
     // TODO throw error if amount > 252 bits
+    // TOOD support treeIndex
     const amountParsed = parseUnits(sendAmount, balanceData[3].result);
     if(source === 'public' && recipType === 'private') {
       if(amountParsed > balanceData[1].result) {
@@ -130,21 +131,21 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
       // private transfer
       await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
-        inputTokenAddr,
-        chainId,
+        BigInt(inputTokenAddr),
+        BigInt(chainId),
         publicClient,
         recipAddr,
-        false
+        0, // publicMode=none
       ));
     } else if(source === 'private' && recipType === 'public') {
       // burn from pool
       await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
-        inputTokenAddr,
-        chainId,
+        BigInt(inputTokenAddr),
+        BigInt(chainId),
         publicClient,
         recipAddr,
-        true
+        2, // publicMode=burn
       ));
     }
   }
