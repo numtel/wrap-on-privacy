@@ -215,7 +215,7 @@ export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry,
   }, [showSaveToRegistry, disabled]);
 
   useEffect(() => {
-    txSuccess && console.log('done');
+    txSuccess && toast.success('Public Key Registered!');
   }, [ txSuccess ]);
 
   useEffect(() => {

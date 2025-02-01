@@ -16,7 +16,7 @@ import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
+export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStatus }) {
   const treeIndex = 0;
   const account = useAccount();
   const chainId = account.chainId || defaultChain;
@@ -29,8 +29,13 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
 
   useEffect(() => {
     async function doAsync() {
+      setSyncStatus('Loading new transactions...');
       const params = await sesh.scanForIncoming(publicClient, treeIndex, chainId);
-      const contracts = new Array(params.count - params.oldCount).fill(0).map((_, i) => [
+      const newCount = params.count - params.oldCount;
+      if(newCount > 0) setSyncStatus(`Found ${newCount} transactions. Attempting decryption now...`);
+      else setSyncStatus('No new transactions found.');
+
+      const contracts = new Array(newCount).fill(0).map((_, i) => [
         {
           abi,
           chainId,
@@ -68,12 +73,15 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
   useEffect(() => {
     if(isSuccess) {
       const cleanData = [];
-      let lastIndex = -1;
+      const firstIndex = contracts[0].args[1];
+      const lastIndex = contracts[contracts.length-1].args[1];
+      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex}...`);
       for(let i = 0; i < data.length; i+=4) {
         // TODO have to refresh page if changing accounts
+        // TODO this needs to be async/worker
         const decrypted = sesh.decryptIncoming(data[i].result, chainId);
-        const index = i/4 + contracts[0].args[1];
-        lastIndex = index;
+        const index = i/4 + firstIndex;
+        setSyncStatus(`Scanning ${index}/${lastIndex}...`);
         if(decrypted && decrypted.hash === data[i+3].result) {
           cleanData.push({
             index,
@@ -93,9 +101,10 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
         }
       }
       sesh.setLastScanned(treeIndex, chainId, lastIndex + 1, cleanData);
+      setSyncStatus(`Scan complete to ${lastIndex}`);
       setCleanData(cleanData);
     }
-  }, [isSuccess]);
+  }, [isSuccess, setSyncStatus, chainId]);
 
   useEffect(() => {
     toast.dismiss();
@@ -128,6 +137,7 @@ export default function LoadIncoming({ sesh, activePool, refreshCounter }) {
     writeContract(tx);
   }
 
+  if(hidden) return null;
   if(sesh && (chainId in sesh.incoming) && (treeIndex in sesh.incoming[chainId])) return (
     <GenericSortableTable
       columns={[

@@ -8,7 +8,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/16/solid';
 
-export default function StatusBar({ sesh, refreshCounter }) {
+export default function StatusBar({ sesh, refreshCounter, syncStatus }) {
   const account = useAccount();
   const pubKeyTx = sesh && account.chainId && sesh.registerTx(account.chainId);
   const contracts = [
@@ -39,5 +39,8 @@ export default function StatusBar({ sesh, refreshCounter }) {
         </>:
         'Unknown receive status.'}
     </div>
+    {syncStatus && <div>
+      {syncStatus}
+    </div>}
   </div>);
 }

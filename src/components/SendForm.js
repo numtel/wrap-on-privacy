@@ -15,9 +15,10 @@ import {symmetricDecrypt} from '../utils.js';
 import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
-// TODO add a check box to also accept the selected incoming receive tx
-export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSend }) {
+// TODO batch proofs into one tx
+export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
   const account = useAccount();
+  const chainId = account.chainId || defaultChain;
   const publicClient = usePublicClient({ chainId });
   const walletClient = useWalletClient({ chainId });
   const [loading, setLoading] = useState(null);
@@ -40,9 +41,9 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
         chainId,
         address: inputTokenAddr,
         functionName: 'allowance',
-        args: [ account.address, byChain[defaultChain].PrivateToken ]
+        args: [ account.address, byChain[chainId].PrivateToken ]
       },
-      sesh.balanceViewTx(inputTokenAddr, chainId),
+      sesh ? sesh.balanceViewTx(inputTokenAddr, chainId) : {},
       {
         abi: erc20Abi,
         chainId,
@@ -104,7 +105,7 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
           chainId,
           address: inputTokenAddr,
           functionName: 'approve',
-          args: [ byChain[defaultChain].PrivateToken, amountParsed ]
+          args: [ byChain[chainId].PrivateToken, amountParsed ]
         });
         return;
       }
@@ -158,11 +159,13 @@ export default function SendForm({ sesh, tokenAddr, chainId, setShowSend, showSe
   if(balanceData) {
     amountParsed = parseUnits(sendAmount, balanceData[3].result);
     publicBalance = balanceData[0].result;
-    privateBalance = balanceData[2].result[0] === 0n ? 0n : symmetricDecrypt(
-      balanceData[2].result[0],
-      sesh.balanceKeypair().privateKey,
-      balanceData[2].result[1]
-    );
+    if(balanceData[2].result) {
+      privateBalance = balanceData[2].result[0] === 0n ? 0n : symmetricDecrypt(
+        balanceData[2].result[0],
+        sesh.balanceKeypair().privateKey,
+        balanceData[2].result[1]
+      );
+    }
   }
 
   return (<Dialog show={showSend} setShow={setShowSend}>

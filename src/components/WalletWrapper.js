@@ -7,22 +7,17 @@ import {
   darkTheme,
   lightTheme,
 } from '@rainbow-me/rainbowkit';
-import {
-  WagmiProvider,
-} from 'wagmi';
-import {sepolia} from 'wagmi/chains';
-import {
-  QueryClientProvider,
-  QueryClient,
-} from "@tanstack/react-query";
+import {WagmiProvider} from 'wagmi';
+import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
-sepolia.rpcUrls.default.http[0] = 'https://rpc.ankr.com/eth_sepolia';
+import {byChain} from '../contracts.js';
+
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',
   projectId: '3ab784972e6540d0095810e72372cfd1',
-  chains: [sepolia],
+  chains: Object.values(byChain).map(x=>x.chain),
 });
 
 const queryClient = new QueryClient();

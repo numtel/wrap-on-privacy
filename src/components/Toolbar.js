@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useAccount,
+  useSwitchChain,
   useWalletClient,
 } from 'wagmi';
 import {
   useConnectModal,
   useAccountModal,
-  useChainModal,
 } from '@rainbow-me/rainbowkit';
 import {
   LockOpenIcon,
@@ -28,7 +28,9 @@ import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
 
 export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
+  const { chains, switchChain } = useSwitchChain();
   const account = useAccount();
+  const chainId = account.chainId || defaultChain;
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
 
@@ -73,6 +75,11 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
         disabled: !sesh || !account.isConnected,
       },
     ],
+    Chain: Object.values(byChain).map(({chain}) => ({
+      label: `${chain.name}`,
+      checked: chainId === chain.id,
+      onClick: () => switchChain({ chainId: chain.id }),
+    })),
     View: [
       {
         label: 'Refresh',
@@ -104,6 +111,10 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
       setShowSetup(false);
     }
   }, [sesh]);
+
+  useEffect(() => {
+    setRefreshStatus(x => x+1);
+  }, [account.chainId]);
 
   useEffect(() => {
     if(!sesh && PrivateTokenSession.hasLocalStorage()) {
@@ -191,7 +202,6 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
           <SendForm
             {...{ sesh, setShowSend, showSend }}
             tokenAddr={activePool}
-            chainId={defaultChain}
           />
         )}
 

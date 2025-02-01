@@ -15,6 +15,14 @@ export function App() {
   const [activePool, setActivePool] = useState(null);
   const [refreshCounter, setRefreshStatus] = useState(0);
   const [curView, setCurView] = useState(0);
+  const [syncStatus, setSyncStatus] = useState(null);
+
+  useEffect(() => {
+    if(sesh) {
+      setRefreshStatus(x => x+1);
+    }
+  }, [sesh]);
+
   return (<>
     <WalletWrapper>
       <Toaster />
@@ -23,9 +31,9 @@ export function App() {
         <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
         <div className="panel">
           {curView === 0 && <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />}
-          {curView === 1 && <IncomingTable {...{sesh, activePool, refreshCounter}} />}
+          <IncomingTable hidden={curView!==1} {...{sesh, refreshCounter, setSyncStatus}} />
         </div>
-        <StatusBar {...{sesh, refreshCounter, activePool}} />
+        <StatusBar {...{sesh, refreshCounter, syncStatus}} />
       </div>
     </WalletWrapper>
   </>);
