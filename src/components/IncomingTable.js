@@ -77,35 +77,42 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
       const firstIndex = contracts[0].args[1];
       const lastIndex = contracts[contracts.length-1].args[1];
       setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex}...`);
+      const allDecrypts = [];
       for(let i = 0; i < data.length; i+=4) {
-        const cleanData = [];
-        const index = i/4 + firstIndex;
-        console.time('decrypt' + index);
-        const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
-        console.timeEnd('decrypt' + index);
-        setSyncStatus(`Scanning ${index}/${lastIndex}...`);
-        if(decrypted && decrypted.hash === data[i+3].result) {
-          cleanData.push({
-            index,
-            receiveTxHash: data[i+3].result.toString(10),
-            sendAmount: decrypted.sendAmount.toString(10),
-            sendBlinding: decrypted.sendBlinding.toString(10),
-            tokenAddr: '0x' + decrypted.tokenAddr.toString(16),
-            time: Number(data[i+1].result),
-            sender: data[i+2].result,
-          });
-        } else {
-          // Save space on the tree leaves that aren't for this account
-          cleanData.push({
-            index,
-            receiveTxHash: data[i+3].result.toString(10),
-          });
-        }
-        // Push item to sesh
-        sesh.setLastScanned(treeIndex, contracts[0].chainId, index + 1, cleanData);
-        // Re-render
-        setCleanData(cleanData);
+        allDecrypts.push((async function() {
+          const cleanData = [];
+          const index = i/4 + firstIndex;
+          console.time('decrypt' + index);
+          const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
+          console.timeEnd('decrypt' + index);
+          setSyncStatus(`Scanning ${index}/${lastIndex}...`);
+          if(decrypted && decrypted.hash === data[i+3].result) {
+            cleanData.push({
+              index,
+              receiveTxHash: data[i+3].result.toString(10),
+              sendAmount: decrypted.sendAmount.toString(10),
+              sendBlinding: decrypted.sendBlinding.toString(10),
+              tokenAddr: '0x' + decrypted.tokenAddr.toString(16),
+              time: Number(data[i+1].result),
+              sender: data[i+2].result,
+            });
+          } else {
+            // Save space on the tree leaves that aren't for this account
+            cleanData.push({
+              index,
+              receiveTxHash: data[i+3].result.toString(10),
+            });
+          }
+          // Push item to sesh
+          sesh.setLastScanned(treeIndex, contracts[0].chainId, index, cleanData[0]);
+          // Re-render
+          setCleanData(cleanData);
+        })());
       }
+      await Promise.all(allDecrypts);
+      sesh.incoming[chainId][treeIndex].count = lastIndex + 1;
+      // Re-render
+      setCleanData([]);
       setSyncStatus(null);
     }
     if(isSuccess) {

@@ -112,8 +112,8 @@ export default class PrivateTokenSession {
     return { count, oldCount };
   }
   async decryptIncoming(encValue, chainId) {
-    // First need to calculate the maxOutputBits for a public key packing
-    const {ntru} = this;
+    // Use a new worker for each decryption
+    const ntru = new NTRUWorkerWrapper(this.ntru.state);
 
     const noteDataRev = splitHexToBigInt(encValue, Math.log2(ntru.q)+1).map(x=>Number(x));
     const decrypted = await ntru.decryptBits(trimPolynomial(noteDataRev));
@@ -144,14 +144,12 @@ export default class PrivateTokenSession {
       item.index,
     );
   }
-  async setLastScanned(treeIndex, chainId, count, newItems) {
+  async setLastScanned(treeIndex, chainId, index, newItem) {
     if(!(chainId in this.incoming)) this.incoming[chainId] = {};
     if(!(treeIndex in this.incoming[chainId])) {
-      this.incoming[chainId][treeIndex] = { count, found: newItems };
-    } else {
-      this.incoming[chainId][treeIndex].count = count;
-      newItems.forEach(item => this.incoming[chainId][treeIndex].found.push(item));
+      this.incoming[chainId][treeIndex] = { found: [] };
     }
+    this.incoming[chainId][treeIndex].found[index] = newItem;
     await this.saveToLocalStorage();
   }
   balanceKeypair() {
