@@ -16,7 +16,7 @@ import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStatus }) {
+export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus, setSyncStatus }) {
   const treeIndex = 0;
   const account = useAccount();
   const chainId = account.chainId || defaultChain;
@@ -29,11 +29,13 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStat
 
   useEffect(() => {
     async function doAsync() {
-      setSyncStatus('Loading new transactions...');
+      setSyncStatus('Looking for new transactions...');
+      setContracts([]);
+      // TODO use wagmi/core multicall inside scanForIncoming instead of this useReadContracts spaghetti
       const params = await sesh.scanForIncoming(publicClient, treeIndex, chainId);
       const newCount = params.count - params.oldCount;
       if(newCount > 0) setSyncStatus(`Found ${newCount} transactions. Attempting decryption now...`);
-      else setSyncStatus('No new transactions found.');
+      else setSyncStatus(null);
 
       const contracts = new Array(newCount).fill(0).map((_, i) => [
         {
@@ -67,19 +69,21 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStat
       ]).flat();
       setContracts(contracts);
     }
-    sesh && doAsync();
-  }, [refreshCounter, treeIndex]);
+    sesh && !syncStatus && doAsync();
+  }, [refreshCounter, treeIndex, chainId, setSyncStatus]);
 
   useEffect(() => {
     async function asyncWork() {
-      const cleanData = [];
       const firstIndex = contracts[0].args[1];
       const lastIndex = contracts[contracts.length-1].args[1];
-      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex-1}...`);
+      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex}...`);
       for(let i = 0; i < data.length; i+=4) {
-        const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
+        const cleanData = [];
         const index = i/4 + firstIndex;
-        setSyncStatus(`Scanning ${index}/${lastIndex-1}...`);
+        console.time('decrypt' + index);
+        const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
+        console.timeEnd('decrypt' + index);
+        setSyncStatus(`Scanning ${index}/${lastIndex}...`);
         if(decrypted && decrypted.hash === data[i+3].result) {
           cleanData.push({
             index,
@@ -97,10 +101,12 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStat
             receiveTxHash: data[i+3].result.toString(10),
           });
         }
+        // Push item to sesh
+        sesh.setLastScanned(treeIndex, contracts[0].chainId, index + 1, cleanData);
+        // Re-render
+        setCleanData(cleanData);
       }
-      sesh.setLastScanned(treeIndex, chainId, lastIndex + 1, cleanData);
-      setSyncStatus(`Scan completed to ${lastIndex - 1}`);
-      setCleanData(cleanData);
+      setSyncStatus(null);
     }
     if(isSuccess) {
       asyncWork();
