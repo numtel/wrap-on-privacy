@@ -67,10 +67,13 @@ function Login({sesh, setSesh, setStep}) {
   async function onNext(event) {
     event.preventDefault();
     try {
+      toast.loading('Loading session...');
       setSesh(await PrivateTokenSession.loadFromLocalStorage(newPw));
+      toast.dismiss();
       toast.success('Login Successful!');
     } catch(error) {
       console.error(error);
+      toast.dismiss();
       toast.error('Login Failed!');
       return;
     }
@@ -156,14 +159,19 @@ function SetPassword({sesh, setSesh, setStep}) {
           'you will lose access to any private funds from the account.')) {
         throw new Error('Session overwrite aborted!');
       }
+      toast.loading('Generating new private session...');
       const newSesh = new PrivateTokenSession({
         password: newPw,
       });
+      await newSesh.init();
       await newSesh.saveToLocalStorage();
+      toast.dismiss();
+      toast.success('New private session created!');
       if(downloadSesh) await newSesh.download();
       setSesh(newSesh);
     } catch(error) {
       console.error(error);
+      toast.dismiss();
       toast.error(error.message);
       return;
     }

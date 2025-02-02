@@ -11,6 +11,7 @@ import NTRU, {
   trimPolynomial,
 } from 'ntru-circom';
 
+import NTRUWorkerWrapper from './NTRUWorkerWrapper.js';
 import {
   genTree,
   getCalldata,
@@ -43,25 +44,17 @@ export default class PrivateTokenSession {
       incoming: {},
     }, options);
 
-    this.ntru = new NTRU(this.ntru);
+    this.ntru = new NTRUWorkerWrapper(this.ntru);
+  }
+  async init() {
     if(this.ntru.f) {
       if(!this.ntru.fq || !this.ntru.fp) {
-        console.time('load');
-        this.ntru.loadPrivateKeyF(this.ntru.f);
-        console.timeEnd('load');
+        await this.ntru.loadPrivateKeyF(this.ntru.f);
       }
-      console.time('load2');
-      this.ntru.verifyKeysInputs();
-      console.timeEnd('load2');
+      await this.ntru.verifyKeysInputs();
     } else if(!this.ntru.h) {
-      console.time('gen');
-      // TODO only do this if it's requested to be done
-      // TODO need to do this in a web worker!
-      this.ntru.generatePrivateKeyF();
-      console.timeEnd('gen');
-      console.time('gen2');
-      this.ntru.generateNewPublicKeyGH();
-      console.timeEnd('gen2');
+      await this.ntru.generatePrivateKeyF();
+      await this.ntru.generateNewPublicKeyGH();
     }
   }
   async export() {
@@ -87,7 +80,9 @@ export default class PrivateTokenSession {
     return PrivateTokenSession.import(JSON.parse(localStorage.getItem(SESH_KEY)), password);
   }
   static async import(data, password) {
-    return new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
+    const instance = new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
+    await instance.init();
+    return instance;
   }
   fromPackedPublicKey(hBytes) {
     // First need to calculate the maxOutputBits for a public key packing
@@ -116,12 +111,12 @@ export default class PrivateTokenSession {
     const oldCount = treeIndex in this.incoming[chainId] ? this.incoming[chainId][treeIndex].count : 0;
     return { count, oldCount };
   }
-  decryptIncoming(encValue, chainId) {
+  async decryptIncoming(encValue, chainId) {
     // First need to calculate the maxOutputBits for a public key packing
     const {ntru} = this;
 
     const noteDataRev = splitHexToBigInt(encValue, Math.log2(ntru.q)+1).map(x=>Number(x));
-    const decrypted = ntru.decryptBits(trimPolynomial(noteDataRev));
+    const decrypted = await ntru.decryptBits(trimPolynomial(noteDataRev));
 
     // Invalid decryption
     const failed = decrypted.value.some(x=>!(x===0 || x===1));
@@ -258,7 +253,7 @@ export default class PrivateTokenSession {
     }
     const encSesh = this.fromPackedPublicKey(hBytes);
     // Receive proofs send a randomized, useless message
-    const noteDataRaw = encSesh.ntru.encryptBits(!recipAddr ? bigintToBits(randomBigInt(2n ** BigInt(ntru.N))) : noteMsg);
+    const noteDataRaw = await encSesh.ntru.encryptBits(!recipAddr ? bigintToBits(randomBigInt(2n ** BigInt(ntru.N))) : noteMsg);
     const noteDataHex = combineBigIntToHex(noteDataRaw.value.map(x=>BigInt(x)), Math.log2(ntru.q)+1);
 
     const newBalanceNonce = genRandomBabyJubValue();

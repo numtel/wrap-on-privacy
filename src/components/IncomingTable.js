@@ -71,17 +71,15 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStat
   }, [refreshCounter, treeIndex]);
 
   useEffect(() => {
-    if(isSuccess) {
+    async function asyncWork() {
       const cleanData = [];
       const firstIndex = contracts[0].args[1];
       const lastIndex = contracts[contracts.length-1].args[1];
-      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex}...`);
+      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex-1}...`);
       for(let i = 0; i < data.length; i+=4) {
-        // TODO have to refresh page if changing accounts
-        // TODO this needs to be async/worker
-        const decrypted = sesh.decryptIncoming(data[i].result, chainId);
+        const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
         const index = i/4 + firstIndex;
-        setSyncStatus(`Scanning ${index}/${lastIndex}...`);
+        setSyncStatus(`Scanning ${index}/${lastIndex-1}...`);
         if(decrypted && decrypted.hash === data[i+3].result) {
           cleanData.push({
             index,
@@ -101,8 +99,11 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, setSyncStat
         }
       }
       sesh.setLastScanned(treeIndex, chainId, lastIndex + 1, cleanData);
-      setSyncStatus(`Scan complete to ${lastIndex}`);
+      setSyncStatus(`Scan completed to ${lastIndex - 1}`);
       setCleanData(cleanData);
+    }
+    if(isSuccess) {
+      asyncWork();
     }
   }, [isSuccess, setSyncStatus, chainId]);
 
