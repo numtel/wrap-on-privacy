@@ -23,6 +23,7 @@ import Dialog from './Dialog.js';
 import AboutForm from './AboutForm.js';
 import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
+import DisplayAddress from './DisplayAddress.js';
 
 import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
@@ -30,7 +31,8 @@ import { byChain, defaultChain } from '../contracts.js';
 export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
   const { chains, switchChain } = useSwitchChain();
   const account = useAccount();
-  const chainId = account.chainId || defaultChain;
+  let chainId = account.chainId || defaultChain;
+  if(!(chainId in byChain)) chainId = defaultChain;
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
 
@@ -237,7 +239,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
           onClick={() => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal()}
         >
           <WalletIcon className="h-8 w-8 block" />
-          {account.isConnected ? account.address.slice(0,8) + '...' : 'Wallet'}
+          {account.isConnected ? <DisplayAddress address={account.address} /> : 'Wallet'}
         </button>
       </div>
     </>

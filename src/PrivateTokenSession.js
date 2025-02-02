@@ -177,6 +177,7 @@ export default class PrivateTokenSession {
 
     return {
       abi: registryAbi,
+      chainId,
       address: byChain[chainId].KeyRegistry,
       functionName: 'set',
       args: [ `0x${hBytes}${balancePubBytes}` ],
@@ -236,6 +237,7 @@ export default class PrivateTokenSession {
     let hBytes;
     let recipPublicKey;
     if(!recipAddr) {
+      // Is a receive proof
       const selfPubs = this.registerTx(chainId).args[0];
       recipPublicKey = '0x' + selfPubs.slice(-64);
       hBytes = selfPubs.slice(0, -64);
@@ -245,7 +247,9 @@ export default class PrivateTokenSession {
       recipPublicKey = recipAddr;
       hBytes = selfPubs.slice(0, -64);
     } else {
+      // Is a mint or send proof
       hBytes = await registry.read.data([recipAddr]);
+      if(hBytes === '0x') throw new Error('Recipient does not have a public key registered.');
       recipPublicKey = '0x' + hBytes.slice(-64);
       hBytes = hBytes.slice(0, -64);
     }
@@ -292,6 +296,7 @@ export default class PrivateTokenSession {
     const proofData = getCalldata(proof).flat().flat().reduce((out, cur) => out + cur.slice(2), '0x');
     return {
       abi,
+      chain: byChain[chainId].chain,
       address: byChain[chainId].PrivateToken,
       functionName: 'verifyProof',
       args: [ proofData, '0x' + noteDataHex ],

@@ -11,7 +11,8 @@ import Dialog from './Dialog.js';
 
 export default function AboutForm({ setShowAbout, showAbout }) {
   const account = useAccount();
-  const chainId = account.chainId || defaultChain;
+  let chainId = account.chainId || defaultChain;
+  if(!(chainId in byChain)) chainId = defaultChain;
   const { data, isError, isLoading, refetch } = useReadContracts({contracts: [
     {
       address: byChain[chainId].PrivateToken,

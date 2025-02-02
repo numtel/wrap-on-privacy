@@ -1,5 +1,7 @@
 import {useState, useEffect} from 'react';
 import { toast } from 'react-hot-toast';
+import { poseidon6 } from 'poseidon-lite';
+import { getContract } from 'viem';
 
 import {
   useAccount,
@@ -11,15 +13,17 @@ import {
 
 import GenericSortableTable from './SortableTable.js';
 import TokenDetails from './TokenDetails.js';
+import DisplayAddress from './DisplayAddress.js';
 import TimeView from './TimeView.js';
 import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus, setSyncStatus }) {
+export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus, setSyncStatus, setActivePool }) {
   const treeIndex = 0;
   const account = useAccount();
-  const chainId = account.chainId || defaultChain;
+  let chainId = account.chainId || defaultChain;
+  if(!(chainId in byChain)) chainId = defaultChain;
   const publicClient = usePublicClient({ chainId });
   const [contracts, setContracts] = useState([]);
   const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
@@ -82,12 +86,10 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
         allDecrypts.push((async function() {
           const cleanData = [];
           const index = i/4 + firstIndex;
-          console.time('decrypt' + index);
           const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
-          console.timeEnd('decrypt' + index);
           setSyncStatus(`Scanning ${index}/${lastIndex}...`);
           if(decrypted && decrypted.hash === data[i+3].result) {
-            cleanData.push({
+            const newItem = {
               index,
               receiveTxHash: data[i+3].result.toString(10),
               sendAmount: decrypted.sendAmount.toString(10),
@@ -95,7 +97,8 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
               tokenAddr: '0x' + decrypted.tokenAddr.toString(16),
               time: Number(data[i+1].result),
               sender: data[i+2].result,
-            });
+            };
+            cleanData.push(newItem);
           } else {
             // Save space on the tree leaves that aren't for this account
             cleanData.push({
@@ -111,6 +114,7 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
       }
       await Promise.all(allDecrypts);
       sesh.incoming[chainId][treeIndex].count = lastIndex + 1;
+      await sesh.saveToLocalStorage();
       // Re-render
       setCleanData([]);
       setSyncStatus(null);
@@ -151,22 +155,35 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
     writeContract(tx);
   }
 
+  function handleRowSelection(index, rowData) {
+    setActivePool(rowData ? rowData.tokenAddr : null);
+  }
+
   if(hidden) return null;
   if(sesh && (chainId in sesh.incoming) && (treeIndex in sesh.incoming[chainId])) return (
     <GenericSortableTable
+      onActiveChange={handleRowSelection}
       columns={[
         {key:'index', label: 'Index'},
         {key:'decrypted', label: 'Incoming Amount', render: (item) => (
-          <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
-            <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
-          </button>
+          <AlreadySubmitted
+            {...{sesh, chainId, refreshCounter}} client={publicClient} newItem={item}
+            ifNot={
+              <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
+                <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+              </button>
+            }
+            ifSubmitted={
+              <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+            }
+          />
         )},
         {key:'time', label: 'Time', render: (item) => (
           <TimeView timestamp={item.time} />
         )},
         {key:'sender', label: 'Sender', render: (item) => (
           <a className="link" href={`${byChain[chainId].explorer}${item.sender}`} target="_blank" rel="noreferrer">
-            {item.sender.slice(0, 8)}...
+            <DisplayAddress address={item.sender} />
           </a>
         )},
       ]}
@@ -182,3 +199,32 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
   );
 }
 
+
+function AlreadySubmitted({ sesh, newItem, chainId, client, ifSubmitted, ifNot, refreshCounter }) {
+  const [submitted, setSubmitted] = useState(null);
+  const keypair = sesh.balanceKeypair();
+  const contract = getContract({
+    client,
+    abi,
+    address: byChain[chainId].PrivateToken,
+  });
+
+  useEffect(() => {
+    async function asyncWork() {
+      const data = await contract.read.receivedHashes([poseidon6([
+        newItem.tokenAddr,
+        chainId,
+        newItem.sendAmount,
+        newItem.sendBlinding,
+        keypair.publicKey,
+        keypair.privateKey
+      ])]);
+      setSubmitted(data);
+    }
+    sesh && newItem && client && asyncWork();
+  }, [sesh, newItem, client, refreshCounter]);
+
+  if(submitted === null) return (<>Loading...</>);
+  if(!submitted) return ifNot;
+  if(submitted) return ifSubmitted;
+}

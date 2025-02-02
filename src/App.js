@@ -31,7 +31,7 @@ export function App() {
         <Toolbar {...{sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
         <div className="panel">
           {curView === 0 && <TokenTable {...{sesh, activePool, setActivePool, refreshCounter}} />}
-          <IncomingTable hidden={curView!==1} {...{sesh, refreshCounter, syncStatus, setSyncStatus}} />
+          <IncomingTable hidden={curView!==1} {...{sesh, refreshCounter, syncStatus, setSyncStatus, setActivePool}} />
         </div>
         <StatusBar {...{sesh, refreshCounter, syncStatus}} />
       </div>

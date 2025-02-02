@@ -12,7 +12,8 @@ import {byChain, defaultChain} from '../contracts.js';
 
 export default function LoadActiveTokenCount({ sesh, setActivePool, refreshCounter }) {
   const account = useAccount();
-  const chainId = account.chainId || defaultChain;
+  let chainId = account.chainId || defaultChain;
+  if(!(chainId in byChain)) chainId = defaultChain;
   const [tokenCount, setTokenCount] = useState(0);
   const contracts = [
     {

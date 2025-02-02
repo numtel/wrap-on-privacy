@@ -240,6 +240,7 @@ export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry,
     } else if(data && txSuccess) {
       setShowSaveToRegistry(false);
       setRefreshStatus(x=> x + 1);
+      // TODO set incoming count to current length if undefined to skip unnecessary loading
       toast.success('Successfully registered public key!');
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);

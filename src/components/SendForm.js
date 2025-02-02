@@ -8,7 +8,8 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
-import {erc20Abi, parseUnits} from 'viem';
+import {erc20Abi, parseUnits, isAddressEqual} from 'viem';
+import { normalize } from 'viem/ens'
 
 import {byChain, defaultChain} from '../contracts.js';
 import {symmetricDecrypt} from '../utils.js';
@@ -18,8 +19,10 @@ import TokenDetails from './TokenDetails.js';
 // TODO batch proofs into one tx
 export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
   const account = useAccount();
-  const chainId = account.chainId || defaultChain;
+  let chainId = account.chainId || defaultChain;
+  if(!(chainId in byChain)) chainId = defaultChain;
   const publicClient = usePublicClient({ chainId });
+  const ensClient = usePublicClient({ chainId: 1 });
   const walletClient = useWalletClient({ chainId });
   const [loading, setLoading] = useState(null);
   const [sendAmount, setSendAmount] = useState('0');
@@ -62,7 +65,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
       toast.loading('Waiting for user to submit...');
     } else if(!data && isError) {
       console.error(writeError);
-      toast.error('Error submitting.');
+      toast.error(writeError.message || 'Error submitting.');
       setLoading(null);
     } else if(data && txError) {
       toast.error('Transaction error!');
@@ -85,7 +88,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
     } catch(error) {
       setLoading(null);
       console.error(error);
-      toast.error('Error generating proof!');
+      toast.error(error.message || 'Error generating proof!');
     }
   }
 
@@ -93,6 +96,18 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
     event.preventDefault();
     if(!balanceData) {
       toast.error('Could not load balance!');
+      return;
+    }
+    let ensAddress;
+    if(recipAddr.endsWith('.eth')) {
+      ensAddress = await ensClient.getEnsAddress({
+        name: normalize(recipAddr),
+      });
+    }
+    const resolvedRecipAddr = ensAddress || recipAddr;
+
+    if(source==='private' && recipType==='private' && isAddressEqual(resolvedRecipAddr, account.address)) {
+      toast.error('Cannot send to self privately.');
       return;
     }
     // TODO throw error if amount > 252 bits
@@ -115,7 +130,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
         BigInt(inputTokenAddr),
         BigInt(chainId),
         publicClient,
-        recipAddr,
+        resolvedRecipAddr,
         1, // publicMode=mint
       ));
     } else if(source === 'public' && recipType === 'public') {
@@ -126,7 +141,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
         chainId,
         address: inputTokenAddr,
         functionName: 'transfer',
-        args: [ recipAddr, amountParsed ]
+        args: [ resolvedRecipAddr, amountParsed ]
       });
     } else if(source === 'private' && recipType === 'private') {
       // private transfer
@@ -135,7 +150,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
         BigInt(inputTokenAddr),
         BigInt(chainId),
         publicClient,
-        recipAddr,
+        resolvedRecipAddr,
         0, // publicMode=none
       ));
     } else if(source === 'private' && recipType === 'public') {
@@ -145,7 +160,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
         BigInt(inputTokenAddr),
         BigInt(chainId),
         publicClient,
-        recipAddr,
+        resolvedRecipAddr,
         2, // publicMode=burn
       ));
     }
@@ -210,7 +225,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
             <span>Address or ENS name:</span>
             <input name="recipAddr" value={recipAddr} onChange={e => setRecipAddr(e.target.value)} />
           </label>
-          <p><button className="link" type="button" onClick={sendToSelf}>
+          <p><button className="link" type="button" onClick={sendToSelf} disabled={recipType==='private' && source==='private'}>
             Send to Self
           </button></p>
         </fieldset>
