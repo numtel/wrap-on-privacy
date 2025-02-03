@@ -6,6 +6,7 @@ import "../contracts/PrivacyToken.sol";
 import {LeafAlreadyExists} from "../contracts/InternalLeanIMT.sol";
 import "./MockPrivacyVerifier.sol";
 import "./MockERC20.sol";
+import "./MockAToken.sol";
 
 contract PrivacyTokenTest is Test {
   PrivacyToken public wrapper;
@@ -171,6 +172,114 @@ contract PrivacyTokenTest is Test {
     );
     wrapper.verifyProof(encodeProof(burnPubs), mockNotice);
     assertEq(token.balanceOf(address(this)), privateAmount);
+  }
+
+  function test_ScaledMintAndBurn() public {
+    bytes memory mockNotice = abi.encode(69);
+
+    // Deploy our mock AToken that supports scaled balances.
+    MockAToken aToken = new MockAToken();
+
+    // Mint tokens into our test account.
+    // For testing purposes we mint 2000 units.
+    aToken.mint(2000);
+    // Set the scaled total supply to 1000 so that the liquidity index is 2.
+    aToken.setScaledTotalSupply(1000);
+    // Approve the PrivacyToken wrapper to spend tokens on our behalf.
+    aToken.approve(address(wrapper), 2000);
+
+    // Confirm initial balance.
+    assertEq(aToken.balanceOf(address(this)), 2000);
+
+    // Setup a mint using fixed (proof) amount = 100.
+    // The wrapper will call _getScaledAmount so that:
+    // scaledAmount = (100 * 1000) / 2000 = 50.
+    uint fixedAmount = 100;
+    uint tokenHash = 111;
+    uint mintNullifier = 1001;
+    uint nonceAfterMint = 1;
+    uint encBalanceAfterMint = 10; // arbitrary encrypted balance
+    uint myPublicKey = 555;
+    uint mintHash = 2020;
+    uint publicTokenAddr = uint(uint160(address(aToken)));
+
+    PubSignals memory mintPubs = PubSignals({
+      treeIndex: 0,
+      publicMode: 1, // mint
+      chainId: block.chainid,
+      encryptedBalance: 0,
+      oldBalanceNonce: 0,
+      newBalanceNonce: nonceAfterMint,
+      receiveNullifier: mintNullifier,
+      tokenHash: tokenHash,
+      newBalance: encBalanceAfterMint,
+      myPublicKey: myPublicKey,
+      treeRoot: 0, // will update below
+      hash: mintHash,
+      publicTokenAddr: publicTokenAddr,
+      publicAddress: 0,
+      publicAmount: fixedAmount
+    });
+
+    // To pass the tree root check, update treeRoot.
+    mintPubs.treeRoot = wrapper.treeRoot(mintPubs.treeIndex);
+
+    // Execute the mint. The wrapper will call aToken.transferFrom(...)
+    // with scaled amount = 50.
+    wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
+
+    // Check that our account’s balance has decreased by 50.
+    uint expectedScaledAmount = 50;
+    assertEq(aToken.balanceOf(address(this)), 2000 - expectedScaledAmount);
+    // And that the wrapper now holds 50 tokens.
+    assertEq(aToken.balanceOf(address(wrapper)), expectedScaledAmount);
+
+    wrapper.verifyProof(encodeProof(PubSignals({
+      treeIndex: 0,
+      publicMode: 0, // update transaction (send) that updates account state
+      chainId: block.chainid,
+      encryptedBalance: 0,
+      oldBalanceNonce: 0,                    // current nonce is 0
+      newBalanceNonce: nonceAfterMint,         // update nonce to 1
+      receiveNullifier: mintNullifier + 5,       // new unique nullifier
+      tokenHash: tokenHash,
+      newBalance: encBalanceAfterMint,          // update balance to the same value
+      myPublicKey: myPublicKey,
+      treeRoot: wrapper.treeRoot(mintPubs.treeIndex),
+      hash: mintHash + 5,
+      publicTokenAddr: 0,                      // no token transfer here
+      publicAddress: 0,
+      publicAmount: 0
+    })), mockNotice);
+
+    // Now perform a burn back to public.
+    // The burn will again use a fixed amount of 100, which converts to 50.
+    PubSignals memory burnPubs = PubSignals({
+      treeIndex: 0,
+      publicMode: 2, // burn
+      chainId: block.chainid,
+      encryptedBalance: encBalanceAfterMint,
+      oldBalanceNonce: nonceAfterMint,
+      newBalanceNonce: nonceAfterMint, // for simplicity
+      receiveNullifier: mintNullifier + 10,
+      tokenHash: tokenHash,
+      newBalance: encBalanceAfterMint + 1,
+      myPublicKey: myPublicKey,
+      treeRoot: wrapper.treeRoot(mintPubs.treeIndex),
+      hash: mintHash + 10,
+      publicTokenAddr: publicTokenAddr,
+      publicAddress: uint(uint160(address(this))),
+      publicAmount: fixedAmount
+    });
+
+    // Execute the burn. The wrapper will call aToken.transfer(...)
+    // transferring back the scaled amount of 50.
+    wrapper.verifyProof(encodeProof(burnPubs), mockNotice);
+
+    // At the end, our account’s balance should be back to 2000
+    // and the wrapper’s balance should be 0.
+    assertEq(aToken.balanceOf(address(this)), 2000);
+    assertEq(aToken.balanceOf(address(wrapper)), 0);
   }
 }
 

@@ -4,6 +4,16 @@ pragma solidity ^0.8.20;
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {InternalLeanIMT, LeanIMTData} from "./InternalLeanIMT.sol";
 import {PoseidonT3} from "./PoseidonT3.sol";
+import "./IScaledERC20.sol";
+
+interface IVerifier {
+  function verifyProof(
+    uint[2] calldata _pA,
+    uint[2][2] calldata _pB,
+    uint[2] calldata _pC,
+    uint[15] calldata _pubSignals
+  ) external view returns (bool);
+}
 
 struct PrivateAccount {
   uint256 encryptedBalance;
@@ -98,6 +108,26 @@ contract PrivacyToken {
     );
   }
 
+  /// @dev Detect if a token supports scaled balances (i.e. is an Aave v3 atoken)
+  function _isScaledToken(address token) internal view returns (bool) {
+    try IScaledERC20(token).scaledTotalSupply() returns (uint256) {
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /// @dev Convert a fixed (proof) amount into the scaled amount.
+  function _getScaledAmount(address token, uint256 fixedAmount) internal view returns (uint256) {
+    // Use the ratio: scaledAmount = fixedAmount * scaledTotalSupply / totalSupply.
+    uint256 totalSupply = IERC20(token).totalSupply();
+    uint256 scaledSupply = IScaledERC20(token).scaledTotalSupply();
+    if (totalSupply == 0 || scaledSupply == 0) {
+      return fixedAmount;
+    }
+    return (fixedAmount * scaledSupply) / totalSupply;
+  }
+
   function verifyProof(bytes memory proofData, bytes memory noticeData) external {
     PubSignals memory pubs = _verifyProof(proofData);
 
@@ -141,21 +171,34 @@ contract PrivacyToken {
       revert PrivacyToken__InvalidTreeRoot();
     }
     
-    if(pubs.publicMode == 2) {
-      // This is a burn
-      // get recip address (recipPubKey) from the encryptedAmountSent
-      // TODO if supports scaled, amounts are scaled amounts
-      IERC20(address(uint160(pubs.publicTokenAddr))).transfer(address(uint160(pubs.publicAddress)), pubs.publicAmount);
+    address tokenAddr = address(uint160(pubs.publicTokenAddr));
+
+    if (pubs.publicMode == 2) {
+      // Burn: send tokens to the recipient.
+      // When the token is scaled, we transfer the scaled amount.
+      uint256 amount;
+      if (_isScaledToken(tokenAddr)) {
+        amount = _getScaledAmount(tokenAddr, pubs.publicAmount);
+        IScaledERC20(tokenAddr).transfer(address(uint160(pubs.publicAddress)), amount);
+      } else {
+        amount = pubs.publicAmount;
+        IERC20(tokenAddr).transfer(address(uint160(pubs.publicAddress)), amount);
+      }
     } else {
-      if(pubs.publicMode == 1) {
-        // This is a mint
-        address tokenAddr = address(uint160(pubs.publicTokenAddr));
-        if(tokenIsLive[tokenAddr] == 0) {
+      if (pubs.publicMode == 1) {
+        // Mint: pull tokens from the sender.
+        if (tokenIsLive[tokenAddr] == 0) {
           tokenIsLive[tokenAddr] = block.timestamp;
           liveTokens.push(tokenAddr);
         }
-
-        IERC20(tokenAddr).transferFrom(msg.sender, address(this), pubs.publicAmount);
+        uint256 amount;
+        if (_isScaledToken(tokenAddr)) {
+          amount = _getScaledAmount(tokenAddr, pubs.publicAmount);
+          IScaledERC20(tokenAddr).transferFrom(msg.sender, address(this), amount);
+        } else {
+          amount = pubs.publicAmount;
+          IERC20(tokenAddr).transferFrom(msg.sender, address(this), amount);
+        }
       }
 
       // This might be a send
@@ -168,14 +211,5 @@ contract PrivacyToken {
     }
 
   }
-
-}
-
-interface IVerifier {
-  function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[15] calldata _pubSignals) external view returns (bool);
-}
-
-interface IScaledERC20 is IERC20 {
-  function scaledTotalSupply() external view returns (uint);
 }
 
