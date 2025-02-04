@@ -8,17 +8,19 @@ import {
   lightTheme,
 } from '@rainbow-me/rainbowkit';
 import {WagmiProvider} from 'wagmi';
-import {mainnet} from 'wagmi/chains';
+import * as chains from 'wagmi/chains';
 import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
 import {byChain} from '../contracts.js';
 
+const chainsFixed = removeDuplicates(chains);
+
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',
   projectId: '3ab784972e6540d0095810e72372cfd1',
-  chains: [mainnet, ...Object.values(byChain).map(x=>x.chain)],
+  chains: Object.values(chainsFixed),
 });
 
 const queryClient = new QueryClient();
@@ -38,4 +40,23 @@ export default function WalletWrapper({ children }) {
       </QueryClientProvider>
     </WagmiProvider>
   );
+}
+
+
+function removeDuplicates(obj) {
+  const uniqueIds = new Set();
+  const result = {};
+
+  for (const key in obj) {
+    const currentItem = obj[key];
+
+    // Check if the id is already in the uniqueIds set
+    if (!uniqueIds.has(currentItem.id)) {
+      // If not, add the id to the set and the key-value pair to the result
+      uniqueIds.add(currentItem.id);
+      result[key] = currentItem;
+    }
+  }
+
+  return result;
 }

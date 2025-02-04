@@ -2,6 +2,7 @@ import {useRef, useState, useEffect} from 'react';
 import { toast } from 'react-hot-toast';
 import {
   useAccount,
+  useSwitchChain,
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -23,7 +24,6 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) 
   }, [step]);
   return (<Dialog show={showSetup} setShow={setShowSetup}>
     {step === -1 && <Login {...{sesh, setSesh, setStep}} />}
-    {step === 3 && <SaveToRegistry {...{sesh, setSesh, setStep}} />}
     {step === 2 && <SetPassword {...{sesh, setSesh, setStep}} />}
     {step === 1 && <ImportSession {...{sesh, setSesh, setStep}} />}
     {step === 0 && <>
@@ -208,8 +208,9 @@ function SetPassword({sesh, setSesh, setStep}) {
   </>);
 }
 
-export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
+export function SaveToRegistry({chainId, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
   const account = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   const { writeContract, isPending, isError, data, error: writeError } = useWriteContract();
   const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
@@ -245,8 +246,11 @@ export function SaveToRegistry({sesh, showSaveToRegistry, setShowSaveToRegistry,
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
-  function registerKey() {
-    const tx = sesh.registerTx(account.chainId);
+  async function registerKey() {
+    const tx = sesh.registerTx(chainId);
+    if(account.chainId !== chainId) {
+      await switchChainAsync({ chainId });
+    }
     writeContract(tx);
   }
   return (<Dialog show={showSaveToRegistry} setShow={setShowSaveToRegistry}>

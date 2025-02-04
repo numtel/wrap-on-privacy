@@ -1,4 +1,4 @@
-import { useAccount, useReadContracts } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 import { erc20Abi } from 'viem';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,10 +9,7 @@ import abi from '../abi/PrivateToken.json';
 
 import Dialog from './Dialog.js';
 
-export default function AboutForm({ setShowAbout, showAbout }) {
-  const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
+export default function AboutForm({ chainId, setShowAbout, showAbout }) {
   const { data, isError, isLoading, refetch } = useReadContracts({contracts: [
     {
       address: byChain[chainId].PrivateToken,

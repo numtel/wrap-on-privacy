@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useAccount,
-  useSwitchChain,
-  useWalletClient,
 } from 'wagmi';
 import {
   useConnectModal,
@@ -28,11 +26,8 @@ import DisplayAddress from './DisplayAddress.js';
 import PrivateTokenSession from '../PrivateTokenSession.js';
 import { byChain, defaultChain } from '../contracts.js';
 
-export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
-  const { chains, switchChain } = useSwitchChain();
+export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
   const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
 
@@ -80,7 +75,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
     Chain: Object.values(byChain).map(({chain}) => ({
       label: `${chain.name}`,
       checked: chainId === chain.id,
-      onClick: () => switchChain({ chainId: chain.id }),
+      onClick: () => setChainId(chain.id),
     })),
     View: [
       {
@@ -116,7 +111,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
 
   useEffect(() => {
     setRefreshStatus(x => x+1);
-  }, [account.chainId]);
+  }, [chainId]);
 
   useEffect(() => {
     if(!sesh && PrivateTokenSession.hasLocalStorage()) {
@@ -199,10 +194,10 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
           <EnvelopeIcon className="h-8 w-8 block" />
           Transfer
         </button>
-        <AboutForm {...{ setShowAbout, showAbout }} />
+        <AboutForm {...{ chainId, setShowAbout, showAbout }} />
         {showSend && (
           <SendForm
-            {...{ sesh, setShowSend, showSend, setRefreshStatus }}
+            {...{ chainId, sesh, setShowSend, showSend, setRefreshStatus }}
             tokenAddr={activePool}
           />
         )}
@@ -233,7 +228,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
           )}
         </button>
         {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup }} />}
-        <SaveToRegistry {...{sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
+        <SaveToRegistry {...{chainId, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
         <button
           className="wallet"
           onClick={() => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal()}

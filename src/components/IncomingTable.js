@@ -5,6 +5,7 @@ import { getContract } from 'viem';
 
 import {
   useAccount,
+  useSwitchChain,
   useReadContracts,
   usePublicClient,
   useWriteContract,
@@ -19,11 +20,10 @@ import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
+export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
   const treeIndex = 0;
   const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
+  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient({ chainId });
   const [contracts, setContracts] = useState([]);
   const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
@@ -153,6 +153,10 @@ export default function LoadIncoming({ sesh, refreshCounter, setRefreshStatus, h
     const tx = await sesh.receiveTx(chainId, treeIndex, item, publicClient);
     toast.dismiss();
     toast.loading('Waiting for transaction...');
+
+    if(account.chainId !== chainId) {
+      await switchChainAsync({ chainId });
+    }
     writeContract(tx);
   }
 

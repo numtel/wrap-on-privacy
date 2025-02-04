@@ -10,10 +10,7 @@ import TokenDetails from './TokenDetails.js';
 import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
-export default function LoadActiveTokenCount({ sesh, setActivePool, refreshCounter }) {
-  const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
+export default function LoadActiveTokenCount({ chainId, sesh, setActivePool, refreshCounter }) {
   const [tokenCount, setTokenCount] = useState(0);
   const contracts = [
     {

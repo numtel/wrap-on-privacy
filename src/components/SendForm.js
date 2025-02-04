@@ -7,6 +7,7 @@ import {
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
 } from 'wagmi';
 import {erc20Abi, parseUnits, isAddressEqual} from 'viem';
 import { normalize } from 'viem/ens'
@@ -19,10 +20,9 @@ import TokenDetails from './TokenDetails.js';
 
 // TODO batch proofs into one tx
 // TODO save sends in sesh in case of decryption failure for manual note passing (or use encryption that doesn't sometimes fail?)
-export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
+export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
   const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
+  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient({ chainId });
   const ensClient = usePublicClient({ chainId: 1 });
   const walletClient = useWalletClient({ chainId });
@@ -125,6 +125,11 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRe
       toast.error('Cannot send to self privately.');
       return;
     }
+
+    if(account.chainId !== chainId) {
+      await switchChainAsync({ chainId });
+    }
+
     // TODO throw error if amount > 252 bits
     // TOOD support treeIndex
     const amountParsed = parseUnits(sendAmount, balanceData[3].result);

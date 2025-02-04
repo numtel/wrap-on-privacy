@@ -10,10 +10,8 @@ import {
 
 import {byChain, defaultChain} from '../contracts.js';
 
-export default function StatusBar({ sesh, refreshCounter, syncStatus }) {
+export default function StatusBar({ chainId, sesh, refreshCounter, syncStatus }) {
   const account = useAccount();
-  let chainId = account.chainId || defaultChain;
-  if(!(chainId in byChain)) chainId = defaultChain;
   const pubKeyTx = sesh && chainId && sesh.registerTx(chainId);
   const contracts = [
     {
