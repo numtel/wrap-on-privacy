@@ -11,6 +11,7 @@ import {
 import {erc20Abi, parseUnits, isAddressEqual} from 'viem';
 import { normalize } from 'viem/ens'
 
+import scaledTokenAbi from '../abi/ScaledToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 import {symmetricDecrypt} from '../utils.js';
 import Dialog from './Dialog.js';
@@ -52,6 +53,18 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRe
         chainId,
         address: inputTokenAddr,
         functionName: 'decimals',
+      },
+      {
+        abi: erc20Abi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'totalSupply',
+      },
+      {
+        abi: scaledTokenAbi,
+        chainId,
+        address: inputTokenAddr,
+        functionName: 'scaledTotalSupply',
       },
     ],
   });
@@ -171,9 +184,17 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRe
     account && setRecipAddr(account.address);
   }
 
+  function sendMax(event) {
+    const text = event.target.innerHTML;
+    const max = parseFloat(text.split(' ')[0]);
+    if(!isNaN(max)) setSendAmount(String(max));
+  }
+
   let privateBalance = 0, publicBalance = 0, amountParsed = 0;
   if(balanceData) {
-    amountParsed = parseUnits(sendAmount, balanceData[3].result);
+    amountParsed = parseUnits(sendAmount, balanceData[3].result)
+      * (balanceData[5].result ? balanceData[5].result : 1n)
+      / (balanceData[5].result ? balanceData[4].result : 1n);
     publicBalance = balanceData[0].result;
     if(balanceData[2].result) {
       privateBalance = balanceData[2].result[0] === 0n ? 0n : symmetricDecrypt(
@@ -210,7 +231,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
-          {balanceData && <p>Max: <TokenDetails address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></p>}
+          {balanceData && <p>Max: <button type="button" className="link" onClick={sendMax}><TokenDetails maybeScaled={true} address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></button></p>}
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>

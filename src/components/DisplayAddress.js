@@ -8,8 +8,7 @@ export default function DisplayAddress({address}) {
 
   useEffect(() => {
     async function asyncWork() {
-      const data = await publicClient.getEnsName({address});
-      if(data) setENSName(data);
+      setENSName(await publicClient.getEnsName({address}));
     }
     isAddress(address) && publicClient && asyncWork();
   }, [address, publicClient]);
