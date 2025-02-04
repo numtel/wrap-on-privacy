@@ -52,12 +52,13 @@ error PrivacyToken__InvalidNewBalanceNonce();
 contract PrivacyToken {
   using InternalLeanIMT for LeanIMTData;
 
-  IVerifier public verifier;
+  IVerifier public immutable verifier;
+  uint256 public immutable treeMaxSize;
 
   address[] public liveTokens;
   mapping(address => uint256) public tokenIsLive;
 
-  uint256 treeCount;
+  uint256 public treeCount;
   // keyed by tree index
   mapping(uint256 => LeanIMTData) sendTree;
   mapping(uint256 => bytes[]) public encryptedSends;
@@ -68,12 +69,16 @@ contract PrivacyToken {
   mapping(uint256 => mapping(uint256 => PrivateAccount)) public accounts;
   // keyed by receiveNullifier
   mapping(uint256 => bool) public receivedHashes;
+  // keyed by treeRoot
+  mapping(uint256 => uint256) public treeRootCreationTimes;
 
-  constructor(address _verifier) {
+  constructor(address _verifier, uint _treeMaxSize) {
     verifier = IVerifier(_verifier);
+    treeMaxSize = _treeMaxSize;
+    treeCount = 1;
   }
 
-  function sendCount(uint256 treeIndex) external view returns (uint256) {
+  function sendCount(uint256 treeIndex) public view returns (uint256) {
     return encryptedSends[treeIndex].length;
   }
 
@@ -81,7 +86,7 @@ contract PrivacyToken {
     return liveTokens.length;
   }
 
-  function treeRoot(uint256 treeIndex) external view returns (uint256) {
+  function treeRoot(uint256 treeIndex) public view returns (uint256) {
     return sendTree[treeIndex]._root();
   }
 
@@ -162,9 +167,8 @@ contract PrivacyToken {
       accounts[pubs.tokenHash][pubs.myPublicKey].nonce = pubs.newBalanceNonce;
     }
 
-    // Submit possible send to tree
-    // TODO support recent roots to like Semaphore
-    if(sendTree[pubs.treeIndex]._root() != pubs.treeRoot) {
+    // Tree roots never expire so clients don't need to stay bleeding edge
+    if(treeRoot(pubs.treeIndex) == 0 ? pubs.treeRoot != 0 : treeRootCreationTimes[pubs.treeRoot] == 0) {
       revert PrivacyToken__InvalidTreeRoot();
     }
     
@@ -201,12 +205,18 @@ contract PrivacyToken {
       }
 
       // This might be a send
-      // TODO needs to go to active tree index, not the one specified!
-      encryptedSends[pubs.treeIndex].push(noticeData);
-      sendTimes[pubs.treeIndex].push(block.timestamp);
-      sendAccounts[pubs.treeIndex].push(msg.sender);
-      sendHashes[pubs.treeIndex].push(pubs.hash);
-      sendTree[pubs.treeIndex]._insert(pubs.hash);
+
+      // Start a new tree if needed
+      if(sendCount(treeCount - 1) == treeMaxSize) {
+        treeCount++;
+      }
+
+      encryptedSends[treeCount - 1].push(noticeData);
+      sendTimes[treeCount - 1].push(block.timestamp);
+      sendAccounts[treeCount - 1].push(msg.sender);
+      sendHashes[treeCount - 1].push(pubs.hash);
+      sendTree[treeCount - 1]._insert(pubs.hash);
+      treeRootCreationTimes[treeRoot(treeCount - 1)] = block.timestamp;
     }
 
   }

@@ -18,6 +18,7 @@ import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
 // TODO batch proofs into one tx
+// TODO save sends in sesh in case of decryption failure for manual note passing (or use encryption that doesn't sometimes fail?)
 export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
   const account = useAccount();
   let chainId = account.chainId || defaultChain;
@@ -231,7 +232,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
-          {balanceData && <p>Max: <button type="button" className="link" onClick={sendMax}><TokenDetails maybeScaled={true} address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></button></p>}
+          {balanceData && <p>Max: <button type="button" className="link" onClick={sendMax}><TokenDetails maybeScaled={source === 'private'} address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></button></p>}
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>

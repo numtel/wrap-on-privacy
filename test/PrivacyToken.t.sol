@@ -20,7 +20,8 @@ contract PrivacyTokenTest is Test {
     token = new MockERC20();
     tokenAddr = uint256(uint160(address(token)));
     verifier = new MockPrivacyVerifier();
-    wrapper = new PrivacyToken(address(verifier));
+    // Very small max tree size to test switching to new trees
+    wrapper = new PrivacyToken(address(verifier), 2);
   }
 
   function encodeProof(PubSignals memory pubs) internal pure returns(bytes memory out) {
@@ -172,6 +173,10 @@ contract PrivacyTokenTest is Test {
     );
     wrapper.verifyProof(encodeProof(burnPubs), mockNotice);
     assertEq(token.balanceOf(address(this)), privateAmount);
+
+    assertEq(wrapper.treeCount(), 2);
+    assertEq(wrapper.sendCount(0), 2);
+    assertEq(wrapper.sendCount(1), 1);
   }
 
   function test_ScaledMintAndBurn() public {

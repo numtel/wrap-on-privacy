@@ -19,7 +19,7 @@ import abi from '../abi/PrivateToken.json';
 import {byChain, defaultChain} from '../contracts.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus, setSyncStatus, setActivePool }) {
+export default function LoadIncoming({ sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
   const treeIndex = 0;
   const account = useAccount();
   let chainId = account.chainId || defaultChain;
@@ -144,6 +144,7 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
       toast.loading('Waiting for transaction...');
     } else if(writeData && txSuccess) {
       toast.success('Transaction Successful!');
+      setRefreshStatus(x => x+1);
     }
   }, [writeData, isPending, isError, txError, txPending, txSuccess]);
 
