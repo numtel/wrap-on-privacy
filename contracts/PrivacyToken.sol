@@ -108,7 +108,6 @@ contract PrivacyToken {
     );
   }
 
-  /// @dev Detect if a token supports scaled balances (i.e. is an Aave v3 atoken)
   function _isScaledToken(address token) internal view returns (bool) {
     try IScaledERC20(token).scaledTotalSupply() returns (uint256) {
       return true;
@@ -117,15 +116,13 @@ contract PrivacyToken {
     }
   }
 
-  /// @dev Convert a fixed (proof) amount into the scaled amount.
   function _getScaledAmount(address token, uint256 fixedAmount) internal view returns (uint256) {
-    // Use the ratio: scaledAmount = fixedAmount * scaledTotalSupply / totalSupply.
     uint256 totalSupply = IERC20(token).totalSupply();
     uint256 scaledSupply = IScaledERC20(token).scaledTotalSupply();
     if (totalSupply == 0 || scaledSupply == 0) {
       return fixedAmount;
     }
-    return (fixedAmount * scaledSupply) / totalSupply;
+    return (fixedAmount * totalSupply) / scaledSupply;
   }
 
   function verifyProof(bytes memory proofData, bytes memory noticeData) external {
@@ -178,6 +175,7 @@ contract PrivacyToken {
       // When the token is scaled, we transfer the scaled amount.
       uint256 amount;
       if (_isScaledToken(tokenAddr)) {
+        // The proof deals with the fixed amounts
         amount = _getScaledAmount(tokenAddr, pubs.publicAmount);
         IScaledERC20(tokenAddr).transfer(address(uint160(pubs.publicAddress)), amount);
       } else {
@@ -193,6 +191,7 @@ contract PrivacyToken {
         }
         uint256 amount;
         if (_isScaledToken(tokenAddr)) {
+          // The proof deals with the fixed amounts
           amount = _getScaledAmount(tokenAddr, pubs.publicAmount);
           IScaledERC20(tokenAddr).transferFrom(msg.sender, address(this), amount);
         } else {

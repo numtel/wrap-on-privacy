@@ -34,7 +34,7 @@ export default function LoadActiveTokenCount({ sesh, setActivePool, refreshCount
   ];
   const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
   useEffect(() => {
-    if(data && data[0].result !== tokenCount) {
+    if(data && data[0].result !== tokenCount && !isNaN(Number(data[0].result))) {
       setTokenCount(Number(data[0].result));
     }
   }, [data]);
@@ -46,6 +46,7 @@ export default function LoadActiveTokenCount({ sesh, setActivePool, refreshCount
   if(tokenCount && data) return (<TokenTable {...{sesh, setActivePool, chainId, refreshCounter}} data={data.slice(1).map(x=>({address: x.result }))} />);
   return (
     <GenericSortableTable
+      disallowSelection={true}
       columns={[{key:'x', label: ''}]}
       data={[{x:isLoading ? 'Loading...' : isError ? 'Error!' : 'No active pools!'}]}
     />
@@ -75,7 +76,7 @@ function TokenTable({ sesh, setActivePool, data, chainId, refreshCounter }) {
       key: 'address',
       label: 'Private Balance',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId, refreshCounter, sesh}} />
+        <TokenDetails maybeScaled={true} symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId, refreshCounter, sesh}} />
       ),
     } : null,
     {

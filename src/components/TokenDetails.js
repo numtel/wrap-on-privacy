@@ -4,14 +4,19 @@ import { formatUnits, erc20Abi } from 'viem';
 
 import {byChain} from '../contracts.js';
 import abi from '../abi/PrivateToken.json';
+import scaledTokenAbi from '../abi/ScaledToken.json';
 import {symmetricDecrypt} from '../utils.js';
 
-export default function TokenDetails({ address, chainId, amount, balanceOf, isPrivateBalance, symbol, refreshCounter, sesh }) {
+const BASE_REQ = 5;
+
+export default function TokenDetails({ address, chainId, maybeScaled, amount, balanceOf, isPrivateBalance, symbol, refreshCounter, sesh }) {
   const general = { address, abi: erc20Abi, chainId};
   const contracts = [
     { ...general, functionName: 'name',},
     { ...general, functionName: 'symbol' },
     { ...general, functionName: 'decimals' },
+    { ...general, functionName: 'totalSupply' },
+    { address, abi: scaledTokenAbi, chainId, functionName: 'scaledTotalSupply' },
   ];
   if(balanceOf) {
     if(isPrivateBalance && sesh) {
@@ -34,17 +39,20 @@ export default function TokenDetails({ address, chainId, amount, balanceOf, isPr
   );
   if(data && balanceOf) {
     if(isPrivateBalance) {
-      if(data.length < 4) {
+      if(data.length === BASE_REQ) {
         // Not logged in
         amount = 0;
-      } else if(data[3].result[0] === 0n) {
+      } else if(data[BASE_REQ].result[0] === 0n) {
         amount = 0;
       } else {
-        amount = symmetricDecrypt(data[3].result[0], sesh.balanceKeypair().privateKey, data[3].result[1]);
+        amount = symmetricDecrypt(data[BASE_REQ].result[0], sesh.balanceKeypair().privateKey, data[BASE_REQ].result[1]);
       }
     } else {
-      amount = data[3].result;
+      amount = data[BASE_REQ].result;
     }
+  }
+  if(maybeScaled && data[4].result) {
+    amount = BigInt(amount) * data[3].result / data[4].result;
   }
   if(data) return (<>
     {amount !== undefined ? `${formatUnits(amount, data[2].result)} ${data[1].result}` : <a className="link" href={`${byChain[chainId].explorer}${address}`} target="_blank" rel="noreferrer">{ symbol ?

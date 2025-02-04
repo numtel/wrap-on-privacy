@@ -195,6 +195,7 @@ contract PrivacyTokenTest is Test {
     // The wrapper will call _getScaledAmount so that:
     // scaledAmount = (100 * 1000) / 2000 = 50.
     uint fixedAmount = 100;
+    uint expectedScaledAmount = 50;
     uint tokenHash = 111;
     uint mintNullifier = 1001;
     uint nonceAfterMint = 1;
@@ -218,7 +219,7 @@ contract PrivacyTokenTest is Test {
       hash: mintHash,
       publicTokenAddr: publicTokenAddr,
       publicAddress: 0,
-      publicAmount: fixedAmount
+      publicAmount: expectedScaledAmount
     });
 
     // To pass the tree root check, update treeRoot.
@@ -229,10 +230,9 @@ contract PrivacyTokenTest is Test {
     wrapper.verifyProof(encodeProof(mintPubs), mockNotice);
 
     // Check that our account’s balance has decreased by 50.
-    uint expectedScaledAmount = 50;
-    assertEq(aToken.balanceOf(address(this)), 2000 - expectedScaledAmount);
+    assertEq(aToken.balanceOf(address(this)), 2000 - fixedAmount);
     // And that the wrapper now holds 50 tokens.
-    assertEq(aToken.balanceOf(address(wrapper)), expectedScaledAmount);
+    assertEq(aToken.balanceOf(address(wrapper)), fixedAmount);
 
     wrapper.verifyProof(encodeProof(PubSignals({
       treeIndex: 0,
@@ -269,7 +269,7 @@ contract PrivacyTokenTest is Test {
       hash: mintHash + 10,
       publicTokenAddr: publicTokenAddr,
       publicAddress: uint(uint160(address(this))),
-      publicAmount: fixedAmount
+      publicAmount: expectedScaledAmount
     });
 
     // Execute the burn. The wrapper will call aToken.transfer(...)

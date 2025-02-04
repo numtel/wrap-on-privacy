@@ -23,6 +23,7 @@ import {
   randomBigInt,
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
+import scaledTokenAbi from './abi/ScaledToken.json';
 import registryAbi from './abi/KeyRegistry.json';
 import {byChain} from'./contracts.js';
 
@@ -142,6 +143,7 @@ export default class PrivateTokenSession {
       BigInt(item.sendBlinding),
       treeIndex,
       item.index,
+      true, // skipScale
     );
   }
   async setLastScanned(treeIndex, chainId, index, newItem) {
@@ -184,10 +186,25 @@ export default class PrivateTokenSession {
     };
 
   }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex, itemIndex) {
+  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex, itemIndex, skipScale) {
     const {ntru} = this;
     const isMint = publicMode === 1;
     const isBurn = publicMode === 2;
+    // If token is atoken then sendAmount needs to be scaled
+    const token = getContract({
+      client,
+      abi: scaledTokenAbi,
+      address: '0x' + tokenAddr.toString(16),
+    });
+    if(!skipScale) {
+      try {
+        const scaledTotalSupply = await token.read.scaledTotalSupply();
+        const totalSupply = await token.read.totalSupply();
+        sendAmount = sendAmount * scaledTotalSupply / totalSupply;
+      } catch(error) {
+        // No problem, it's not a scaled token
+      }
+    }
 
     treeIndex = treeIndex || 0;
     sendBlinding = sendBlinding || genRandomBabyJubValue();

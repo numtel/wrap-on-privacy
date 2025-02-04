@@ -202,7 +202,7 @@ export default function Toolbar({ sesh, setSesh, setRefreshStatus, activePool, c
         <AboutForm {...{ setShowAbout, showAbout }} />
         {showSend && (
           <SendForm
-            {...{ sesh, setShowSend, showSend }}
+            {...{ sesh, setShowSend, showSend, setRefreshStatus }}
             tokenAddr={activePool}
           />
         )}

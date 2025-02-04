@@ -170,11 +170,11 @@ export default function LoadIncoming({ sesh, refreshCounter, hidden, syncStatus,
             {...{sesh, chainId, refreshCounter}} client={publicClient} newItem={item}
             ifNot={
               <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
-                <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+                <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
               </button>
             }
             ifSubmitted={
-              <TokenDetails amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+              <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
             }
           />
         )},

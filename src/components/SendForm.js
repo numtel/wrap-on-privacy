@@ -17,7 +17,7 @@ import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
 // TODO batch proofs into one tx
-export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
+export default function SendForm({ sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
   const account = useAccount();
   let chainId = account.chainId || defaultChain;
   if(!(chainId in byChain)) chainId = defaultChain;
@@ -76,6 +76,7 @@ export default function SendForm({ sesh, tokenAddr, setShowSend, showSend }) {
       toast.success('Transaction Successful!');
       refetch();
       setLoading(null);
+      setRefreshStatus(x => x+1);
     }
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
