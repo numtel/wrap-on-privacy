@@ -87,6 +87,12 @@ You may update your public key as often as needed.
 
 The status bar will display a green check if your key is registered at the current address.
 
+## Pool Manager
+
+Deploy compatible `PrivacyToken` and `KeyRegistry` contracts to any EVM chain then load your pool in the Pool Manager.
+
+The base contract in this repository that is deployed on Sepolia allows anyone access to the pool for any ERC20 token but you could add rules and change the configuration for your pool.
+
 ## References
 
 * [Control as Liability by Vitalik Buterin](https://vitalik.eth.limo/general/2019/05/09/control_as_liability.html)

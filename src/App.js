@@ -32,6 +32,18 @@ function AppInner() {
   const [refreshCounter, setRefreshStatus] = useState(0);
   const [curView, setCurView] = useState(0);
   const [syncStatus, setSyncStatus] = useState(null);
+  const [cssInsert, setCssInsert] = useState(null);
+
+  useEffect(() => {
+    setCssInsert(sesh && `
+      #main {
+        ${Object.keys(sesh.colorScheme)
+          .filter(key => sesh.colorScheme[key] !== null)
+          .map(key => `--${key}: ${sesh.colorScheme[key]};`)
+          .join('\n')}
+      }
+    `);
+  }, [refreshCounter, sesh]);
 
   useEffect(() => {
     if(sesh) {
@@ -48,6 +60,7 @@ function AppInner() {
         <IncomingTable hidden={curView!==1} {...{pool, sesh, refreshCounter, setRefreshStatus, syncStatus, setSyncStatus, setActivePool}} />
       </div>
       <StatusBar {...{pool, sesh, refreshCounter, syncStatus}} />
+      {cssInsert && <style>{cssInsert}</style>}
     </div>
   );
 }

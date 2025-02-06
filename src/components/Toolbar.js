@@ -23,6 +23,7 @@ import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 import DisplayAddress from './DisplayAddress.js';
 import PoolMan from './PoolMan.js';
+import ColorScheme from './ColorScheme.js';
 
 import PrivateTokenSession, {poolId} from '../PrivateTokenSession.js';
 import { defaultPool } from '../contracts.js';
@@ -38,6 +39,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
   const [showMenu, setShowMenu] = useState(0);
   const [showPoolMan, setShowPoolMan] = useState(false);
+  const [showColorScheme, setShowColorScheme] = useState(false);
   const menuRef = useRef(null);
 
   const menu = {
@@ -96,6 +98,11 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
       {
         label: 'Refresh',
         onClick: () => setRefreshStatus(x => x+1),
+      },
+      {
+        label: 'Configure Color Scheme...',
+        disabled: !sesh,
+        onClick: () => setShowColorScheme(true),
       },
       { sep: true },
       {
@@ -163,6 +170,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   return (
     <>
       {showPoolMan && <PoolMan {...{sesh, setShowPoolMan, showPoolMan}} />}
+      {showColorScheme && <ColorScheme {...{sesh, setShowColorScheme, showColorScheme, setRefreshStatus}} />}
       <div className="toolbar menubar" ref={menuRef}>
         <div className="vr"></div>
         {Object.keys(menu).map((key, index) => (
