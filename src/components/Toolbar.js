@@ -162,6 +162,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
 
   return (
     <>
+      {showPoolMan && <PoolMan {...{sesh, setShowPoolMan, showPoolMan}} />}
       <div className="toolbar menubar" ref={menuRef}>
         <div className="vr"></div>
         {Object.keys(menu).map((key, index) => (
@@ -252,7 +253,6 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
           {account.isConnected ? <DisplayAddress address={account.address} /> : 'Wallet'}
         </button>
       </div>
-      {showPoolMan && <PoolMan {...{sesh, setSesh, pool, setShowPoolMan, showPoolMan}} />}
     </>
   );
 }

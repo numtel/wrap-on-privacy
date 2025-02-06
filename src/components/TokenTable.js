@@ -65,21 +65,21 @@ function TokenTable({ sesh, setActivePool, data, pool, refreshCounter }) {
       key: 'address',
       label: 'Public Balance',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={address} address={item.address} {...{pool, refreshCounter}} />
+        <TokenDetails hideSymbol={true} balanceOf={address} address={item.address} {...{pool, refreshCounter}} />
       ),
     } : null,
     isConnected ? {
       key: 'address',
       label: 'Private Balance',
       render: (item) => (
-        <TokenDetails maybeScaled={true} symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{pool, refreshCounter, sesh}} />
+        <TokenDetails maybeScaled={true} hideSymbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{pool, refreshCounter, sesh}} />
       ),
     } : null,
     {
       key: 'address',
       label: 'Pool Size',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={pool.PrivateToken.address} address={item.address} {...{pool, refreshCounter}} />
+        <TokenDetails hideSymbol={true} balanceOf={pool.PrivateToken.address} address={item.address} {...{pool, refreshCounter}} />
       ),
     },
   ].filter(x => x !== null);

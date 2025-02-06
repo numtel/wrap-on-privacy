@@ -68,7 +68,10 @@ label.radio:active { outline:1px dotted var(--text); }
 
 label.text { display: block; }
 label.text span { display: block; }
-label.text input { background:var(--highlight); border: 2px inset var(--etch); border-radius: 3px; padding: 5px; width:100%; }
+label.text input,
+label.text select { background:var(--highlight); border: 2px inset var(--etch); border-radius: 3px; padding: 5px; width:100%; }
+label.text input:disabled,
+label.text select:disabled { background:var(--face); }
 
 .button { padding: 5px 8px; border-radius: 3px; background:var(--face); border: 2px outset var(--etch); margin: 0 10px; }
 .button:active { border: 2px inset var(--etch); outline:1px solid var(--highlight); }
@@ -114,7 +117,8 @@ p { margin-bottom:15px; }
 
 
 .panel { overflow:auto; height:calc(100vh - 171px);  background:var(--highlight); display:flex; flex-direction:column;}
-.table-wrapper { flex:1; }
+.table-wrapper { flex:1; background:var(--highlight); padding-bottom:20px; }
+dialog .table-wrapper { border:2px inset var(--etch); }
 table {width:100%;}
 th { position:sticky; top:0px; }
 th span { display:block; padding: 1px 4px; background:var(--face); border: 2px outset var(--thEtch); text-wrap:nowrap;}

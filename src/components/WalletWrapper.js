@@ -13,7 +13,7 @@ import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
-const chainsFixed = removeDuplicates(chains);
+export const chainsFixed = removeDuplicates(chains);
 
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',

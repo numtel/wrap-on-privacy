@@ -5,6 +5,7 @@ export default function GenericSortableTable({
   data = [],
   onActiveChange,
   disallowSelection,
+  className,
 }) {
   const [active, setActive] = useState(null);
   const [isDown, setIsDown] = useState(false);
@@ -67,7 +68,7 @@ export default function GenericSortableTable({
     if(disallowSelection) setActive(null);
   }, [disallowSelection]);
 
-  return (<div className="table-wrapper" ref={menuRef}>
+  return (<div className={`table-wrapper ${className}`} ref={menuRef}>
     <table cellPadding="0">
       <thead>
         <tr>
