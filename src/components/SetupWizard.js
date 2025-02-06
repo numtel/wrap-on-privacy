@@ -208,7 +208,7 @@ function SetPassword({sesh, setSesh, setStep}) {
   </>);
 }
 
-export function SaveToRegistry({chainId, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
+export function SaveToRegistry({pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
   const account = useAccount();
   const { switchChainAsync } = useSwitchChain();
 
@@ -247,9 +247,9 @@ export function SaveToRegistry({chainId, sesh, showSaveToRegistry, setShowSaveTo
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
   async function registerKey() {
-    const tx = sesh.registerTx(chainId);
-    if(account.chainId !== chainId) {
-      await switchChainAsync({ chainId });
+    const tx = sesh.registerTx(pool);
+    if(account.chainId !== pool.KeyRegistry.chain.id) {
+      await switchChainAsync({ chainId: pool.KeyRegistry.chain.id });
     }
     writeContract(tx);
   }

@@ -8,22 +8,21 @@ import {
 import GenericSortableTable from './SortableTable.js';
 import TokenDetails from './TokenDetails.js';
 import abi from '../abi/PrivateToken.json';
-import {byChain, defaultChain} from '../contracts.js';
 
-export default function LoadActiveTokenCount({ chainId, sesh, setActivePool, refreshCounter }) {
+export default function LoadActiveTokenCount({ pool, sesh, setActivePool, refreshCounter }) {
   const [tokenCount, setTokenCount] = useState(0);
   const contracts = [
     {
       abi,
-      chainId,
-      address: byChain[chainId].PrivateToken,
+      chainId: pool.PrivateToken.chain.id,
+      address: pool.PrivateToken.address,
       functionName: 'tokenCount',
     },
     ...(new Array(tokenCount).fill(0).map((_, i) => [
       {
         abi,
-        chainId,
-        address: byChain[chainId].PrivateToken,
+        chainId: pool.PrivateToken.chain.id,
+        address: pool.PrivateToken.address,
         functionName: 'liveTokens',
         args: [ i ],
       },
@@ -40,7 +39,7 @@ export default function LoadActiveTokenCount({ chainId, sesh, setActivePool, ref
     refetch();
   }, [refreshCounter]);
 
-  if(tokenCount && data) return (<TokenTable {...{sesh, setActivePool, chainId, refreshCounter}} data={data.slice(1).map(x=>({address: x.result }))} />);
+  if(tokenCount && data) return (<TokenTable {...{sesh, setActivePool, pool, refreshCounter}} data={data.slice(1).map(x=>({address: x.result }))} />);
   return (
     <GenericSortableTable
       disallowSelection={true}
@@ -50,7 +49,7 @@ export default function LoadActiveTokenCount({ chainId, sesh, setActivePool, ref
   );
 }
 
-function TokenTable({ sesh, setActivePool, data, chainId, refreshCounter }) {
+function TokenTable({ sesh, setActivePool, data, pool, refreshCounter }) {
   const {address, isConnected} = useAccount();
 
   // Define columns for this table
@@ -59,28 +58,28 @@ function TokenTable({ sesh, setActivePool, data, chainId, refreshCounter }) {
       key: 'address',
       label: 'Token',
       render: (item) => (
-        <TokenDetails symbol={true} address={item.address} {...{chainId, refreshCounter}} />
+        <TokenDetails symbol={true} address={item.address} {...{pool, refreshCounter}} />
       ),
     },
     isConnected ? {
       key: 'address',
       label: 'Public Balance',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={address} address={item.address} {...{chainId, refreshCounter}} />
+        <TokenDetails symbol={true} balanceOf={address} address={item.address} {...{pool, refreshCounter}} />
       ),
     } : null,
     isConnected ? {
       key: 'address',
       label: 'Private Balance',
       render: (item) => (
-        <TokenDetails maybeScaled={true} symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{chainId, refreshCounter, sesh}} />
+        <TokenDetails maybeScaled={true} symbol={true} balanceOf={address} isPrivateBalance={true} address={item.address} {...{pool, refreshCounter, sesh}} />
       ),
     } : null,
     {
       key: 'address',
       label: 'Pool Size',
       render: (item) => (
-        <TokenDetails symbol={true} balanceOf={byChain[chainId].PrivateToken} address={item.address} {...{chainId, refreshCounter}} />
+        <TokenDetails symbol={true} balanceOf={pool.PrivateToken.address} address={item.address} {...{pool, refreshCounter}} />
       ),
     },
   ].filter(x => x !== null);

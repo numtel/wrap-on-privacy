@@ -13,19 +13,19 @@ import {erc20Abi, parseUnits, isAddressEqual} from 'viem';
 import { normalize } from 'viem/ens'
 
 import scaledTokenAbi from '../abi/ScaledToken.json';
-import {byChain, defaultChain} from '../contracts.js';
 import {symmetricDecrypt} from '../utils.js';
 import Dialog from './Dialog.js';
 import TokenDetails from './TokenDetails.js';
 
 // TODO batch proofs into one tx
 // TODO save sends in sesh in case of decryption failure for manual note passing (or use encryption that doesn't sometimes fail?)
-export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
+export default function SendForm({ pool, sesh, tokenAddr, setShowSend, showSend, setRefreshStatus }) {
   const account = useAccount();
   const { switchChainAsync } = useSwitchChain();
-  const publicClient = usePublicClient({ chainId });
+  const publicClient = usePublicClient({ chainId: pool.PrivateToken.chain.id });
+  const registryClient = usePublicClient({ chainId: pool.KeyRegistry.chain.id });
   const ensClient = usePublicClient({ chainId: 1 });
-  const walletClient = useWalletClient({ chainId });
+  const walletClient = useWalletClient({ chainId: pool.PrivateToken.chain.id });
   const [loading, setLoading] = useState(null);
   const [sendAmount, setSendAmount] = useState('0');
   const [recipAddr, setRecipAddr] = useState('');
@@ -36,34 +36,34 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
     contracts: [
       {
         abi: erc20Abi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'balanceOf',
         args: [ account.address ]
       },
       {
         abi: erc20Abi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'allowance',
-        args: [ account.address, byChain[chainId].PrivateToken ]
+        args: [ account.address, pool.PrivateToken.address ]
       },
-      sesh ? sesh.balanceViewTx(inputTokenAddr, chainId) : {},
+      sesh ? sesh.balanceViewTx(inputTokenAddr, pool) : {},
       {
         abi: erc20Abi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'decimals',
       },
       {
         abi: erc20Abi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'totalSupply',
       },
       {
         abi: scaledTokenAbi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'scaledTotalSupply',
       },
@@ -126,8 +126,8 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       return;
     }
 
-    if(account.chainId !== chainId) {
-      await switchChainAsync({ chainId });
+    if(account.chainId !== pool.PrivateToken.chain.id) {
+      await switchChainAsync({ chainId: pool.PrivateToken.chain.id });
     }
 
     // TODO throw error if amount > 252 bits
@@ -137,10 +137,10 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       if(amountParsed > balanceData[1].result) {
         writeContract({
           abi: erc20Abi,
-          chainId,
+          chainId: pool.PrivateToken.chain.id,
           address: inputTokenAddr,
           functionName: 'approve',
-          args: [ byChain[chainId].PrivateToken, amountParsed ]
+          args: [ pool.PrivateToken.address, amountParsed ]
         });
         return;
       }
@@ -148,8 +148,9 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
         BigInt(inputTokenAddr),
-        BigInt(chainId),
+        pool,
         publicClient,
+        registryClient,
         resolvedRecipAddr,
         1, // publicMode=mint
       ));
@@ -158,7 +159,7 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       setLoading('Waiting for transaction...');
       writeContract({
         abi: erc20Abi,
-        chainId,
+        chainId: pool.PrivateToken.chain.id,
         address: inputTokenAddr,
         functionName: 'transfer',
         args: [ resolvedRecipAddr, amountParsed ]
@@ -168,8 +169,9 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
         BigInt(inputTokenAddr),
-        BigInt(chainId),
+        pool,
         publicClient,
+        registryClient,
         resolvedRecipAddr,
         0, // publicMode=none
       ));
@@ -178,8 +180,9 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
       await tryProof(() => sesh.sendPrivateTx(
         amountParsed,
         BigInt(inputTokenAddr),
-        BigInt(chainId),
+        pool,
         publicClient,
+        registryClient,
         resolvedRecipAddr,
         2, // publicMode=burn
       ));
@@ -221,7 +224,7 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
             <span>Address:</span>
             <input name="tokenAddr" value={inputTokenAddr} onChange={e => setInputTokenAddr(e.target.value)} />
           </label>
-          <p><TokenDetails address={inputTokenAddr} {...{chainId}} /></p>
+          <p><TokenDetails address={inputTokenAddr} {...{pool}} /></p>
         </fieldset>
         <fieldset>
           <legend>Source</legend>
@@ -237,7 +240,7 @@ export default function SendForm({ chainId, sesh, tokenAddr, setShowSend, showSe
             <span>Amount:</span>
             <input ref={primaryInputRef} name="sendAmount" type="number" value={sendAmount} onChange={e => setSendAmount(e.target.value)} />
           </label>
-          {balanceData && <p>Max: <button type="button" className="link" onClick={sendMax}><TokenDetails maybeScaled={source === 'private'} address={inputTokenAddr} {...{chainId}} amount={source === 'private' ? privateBalance : publicBalance} /></button></p>}
+          {balanceData && <p>Max: <button type="button" className="link" onClick={sendMax}><TokenDetails maybeScaled={source === 'private'} address={inputTokenAddr} {...{pool}} amount={source === 'private' ? privateBalance : publicBalance} /></button></p>}
         </fieldset>
         <fieldset>
           <legend>Recipient</legend>

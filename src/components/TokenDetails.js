@@ -2,25 +2,24 @@ import {useState, useEffect} from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits, erc20Abi } from 'viem';
 
-import {byChain} from '../contracts.js';
 import abi from '../abi/PrivateToken.json';
 import scaledTokenAbi from '../abi/ScaledToken.json';
 import {symmetricDecrypt} from '../utils.js';
 
 const BASE_REQ = 5;
 
-export default function TokenDetails({ address, chainId, maybeScaled, amount, balanceOf, isPrivateBalance, symbol, refreshCounter, sesh }) {
-  const general = { address, abi: erc20Abi, chainId};
+export default function TokenDetails({ address, pool, maybeScaled, amount, balanceOf, isPrivateBalance, symbol, refreshCounter, sesh }) {
+  const general = { address, abi: erc20Abi, chainId: pool.PrivateToken.chain.id};
   const contracts = [
     { ...general, functionName: 'name',},
     { ...general, functionName: 'symbol' },
     { ...general, functionName: 'decimals' },
     { ...general, functionName: 'totalSupply' },
-    { address, abi: scaledTokenAbi, chainId, functionName: 'scaledTotalSupply' },
+    { address, abi: scaledTokenAbi, chainId: pool.PrivateToken.chain.id, functionName: 'scaledTotalSupply' },
   ];
   if(balanceOf) {
     if(isPrivateBalance && sesh) {
-      contracts.push(sesh.balanceViewTx(address, chainId));
+      contracts.push(sesh.balanceViewTx(address, pool));
     } else if(!isPrivateBalance) {
       contracts.push({ ...general, functionName: 'balanceOf', args: [ balanceOf ] });
     }
@@ -51,11 +50,11 @@ export default function TokenDetails({ address, chainId, maybeScaled, amount, ba
       amount = data[BASE_REQ].result;
     }
   }
-  if(maybeScaled && data[4].result) {
+  if(maybeScaled && data && data[4].result) {
     amount = BigInt(amount) * data[3].result / data[4].result;
   }
   if(data) return (<>
-    {amount !== undefined ? `${formatUnits(amount, data[2].result)} ${data[1].result}` : <a className="link" href={`${byChain[chainId].explorer}${address}`} target="_blank" rel="noreferrer">{ symbol ?
+    {amount !== undefined ? `${formatUnits(amount, data[2].result)} ${data[1].result}` : <a className="link" href={`${pool.PrivateToken.chain.blockExplorers.default.url}/address/${address}`} target="_blank" rel="noreferrer">{ symbol ?
       data[1].result :
       <>{ data[0].result } ({data[1].result})</>
     }

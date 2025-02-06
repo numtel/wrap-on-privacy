@@ -25,7 +25,7 @@ import {
 import abi from './abi/PrivateToken.json';
 import scaledTokenAbi from './abi/ScaledToken.json';
 import registryAbi from './abi/KeyRegistry.json';
-import {byChain} from'./contracts.js';
+import {defaultPool} from'./contracts.js';
 
 export const SESH_KEY = 'private-token-session';
 
@@ -43,9 +43,14 @@ export default class PrivateTokenSession {
       },
       privateKey: genRandomBabyJubValue().toString(),
       incoming: {},
+      pools: [],
     }, options);
 
     this.ntru = new NTRUWorkerWrapper(this.ntru);
+
+    if(this.pools.length === 0) {
+      this.pools.push(defaultPool);
+    }
   }
   async init() {
     if(this.ntru.f) {
@@ -101,18 +106,18 @@ export default class PrivateTokenSession {
     });
     return newSesh;
   }
-  async scanForIncoming(client, treeIndex, chainId) {
+  async scanForIncoming(client, treeIndex, pool) {
     const contract = getContract({
       client,
       abi,
-      address: byChain[chainId].PrivateToken,
+      address: pool.PrivateToken.address,
     });
     const count = Number(await contract.read.sendCount([treeIndex]));
-    if(!(chainId in this.incoming)) this.incoming[chainId] = {};
-    const oldCount = treeIndex in this.incoming[chainId] ? this.incoming[chainId][treeIndex].count : 0;
+    if(!(poolId(pool) in this.incoming)) this.incoming[poolId(pool)] = {};
+    const oldCount = treeIndex in this.incoming[poolId(pool)] ? this.incoming[poolId(pool)][treeIndex].count : 0;
     return { count, oldCount };
   }
-  async decryptIncoming(encValue, chainId) {
+  async decryptIncoming(encValue, pool) {
     // Use a new worker for each decryption
     const ntru = new NTRUWorkerWrapper(this.ntru.state);
 
@@ -128,16 +133,17 @@ export default class PrivateTokenSession {
     const sendBlinding = bitsToBigInt(decrypted.value.slice(160+256, 160 + 256*2).reverse());
 
     let {publicKey} = this.balanceKeypair();
-    const hash = poseidon5([ tokenAddr, chainId, sendAmount, sendBlinding, publicKey ]);
+    const hash = poseidon5([ tokenAddr, pool.PrivateToken.chain.id, sendAmount, sendBlinding, publicKey ]);
 
     return {tokenAddr, sendAmount, sendBlinding, hash};
   }
-  async receiveTx(chainId, treeIndex, item, client) {
+  async receiveTx(pool, treeIndex, item, client, registryClient) {
     return await this.sendPrivateTx(
       BigInt(item.sendAmount),
       BigInt(item.tokenAddr),
-      chainId,
+      pool,
       client,
+      registryClient,
       null, // recipAddr,
       0, // publicMode,
       BigInt(item.sendBlinding),
@@ -146,12 +152,12 @@ export default class PrivateTokenSession {
       true, // skipScale
     );
   }
-  async setLastScanned(treeIndex, chainId, index, newItem) {
-    if(!(chainId in this.incoming)) this.incoming[chainId] = {};
-    if(!(treeIndex in this.incoming[chainId])) {
-      this.incoming[chainId][treeIndex] = { found: [] };
+  async setLastScanned(treeIndex, pool, index, newItem) {
+    if(!(poolId(pool) in this.incoming)) this.incoming[poolId(pool)] = {};
+    if(!(treeIndex in this.incoming[poolId(pool)])) {
+      this.incoming[poolId(pool)][treeIndex] = { found: [] };
     }
-    this.incoming[chainId][treeIndex].found[index] = newItem;
+    this.incoming[poolId(pool)][treeIndex].found[index] = newItem;
     await this.saveToLocalStorage();
   }
   balanceKeypair() {
@@ -159,18 +165,18 @@ export default class PrivateTokenSession {
     const publicKey = poseidon1([privateKey]);
     return {publicKey, privateKey};
   }
-  balanceViewTx(tokenAddr, chainId) {
+  balanceViewTx(tokenAddr, pool) {
     if(!tokenAddr) return {};
     const {publicKey, privateKey} = this.balanceKeypair();
     return {
       abi,
-      chainId,
-      address: byChain[chainId].PrivateToken,
+      chainId: pool.PrivateToken.chain.id,
+      address: pool.PrivateToken.address,
       functionName: 'accounts',
       args: [poseidon2([privateKey, tokenAddr]), publicKey],
     };
   }
-  registerTx(chainId) {
+  registerTx(pool) {
     const {ntru} = this;
     const hPacked = packOutput(ntru.q, ntru.N, ntru.h);
     const hBytes = combineBigIntToHex(hPacked.expected, hPacked.maxOutputBits);
@@ -179,14 +185,14 @@ export default class PrivateTokenSession {
 
     return {
       abi: registryAbi,
-      chainId,
-      address: byChain[chainId].KeyRegistry,
+      chainId: pool.KeyRegistry.chain.id,
+      address: pool.KeyRegistry.address,
       functionName: 'set',
       args: [ `0x${hBytes}${balancePubBytes}` ],
     };
 
   }
-  async sendPrivateTx(sendAmount, tokenAddr, chainId, client, recipAddr, publicMode, sendBlinding, treeIndex, itemIndex, skipScale) {
+  async sendPrivateTx(sendAmount, tokenAddr, pool, client, registryClient, recipAddr, publicMode, sendBlinding, treeIndex, itemIndex, skipScale) {
     const {ntru} = this;
     const isMint = publicMode === 1;
     const isBurn = publicMode === 2;
@@ -219,8 +225,8 @@ export default class PrivateTokenSession {
     }
 
     let leaves = [];
-    if(chainId in this.incoming && treeIndex in this.incoming[chainId]) {
-      leaves = this.incoming[chainId][treeIndex].found.map(item => BigInt(item.receiveTxHash));
+    if(poolId(pool) in this.incoming && treeIndex in this.incoming[poolId(pool)]) {
+      leaves = this.incoming[poolId(pool)][treeIndex].found.map(item => BigInt(item.receiveTxHash));
     }
     // itemIndex not needed for send proofs
     const { treeSiblings, treeIndices, treeDepth, treeRoot } = genTree(leaves, itemIndex || 0);
@@ -228,7 +234,7 @@ export default class PrivateTokenSession {
     const contract = getContract({
       client,
       abi,
-      address: byChain[chainId].PrivateToken,
+      address: pool.PrivateToken.address,
     });
     let {privateKey, publicKey} = this.balanceKeypair();
     let account;
@@ -247,20 +253,20 @@ export default class PrivateTokenSession {
     }
 
     const registry = getContract({
-      client,
+      client: registryClient,
       abi: registryAbi,
-      address: byChain[chainId].KeyRegistry,
+      address: pool.KeyRegistry.address,
     });
     let hBytes;
     let recipPublicKey;
     if(!recipAddr) {
       // Is a receive proof
-      const selfPubs = this.registerTx(chainId).args[0];
+      const selfPubs = this.registerTx(pool).args[0];
       recipPublicKey = '0x' + selfPubs.slice(-64);
       hBytes = selfPubs.slice(0, -64);
     } else if(isBurn) {
       // Not used but needs to be calculated
-      const selfPubs = this.registerTx(chainId).args[0];
+      const selfPubs = this.registerTx(pool).args[0];
       recipPublicKey = recipAddr;
       hBytes = selfPubs.slice(0, -64);
     } else {
@@ -291,7 +297,7 @@ export default class PrivateTokenSession {
       oldBalanceNonce: account[1],
       newBalanceNonce,
       tokenAddr,
-      chainId,
+      chainId: BigInt(pool.PrivateToken.chain.id),
       sendBlinding,
       myPrivateKey: privateKey,
       fakeReceiveHash: genRandomBabyJubValue(),
@@ -313,20 +319,16 @@ export default class PrivateTokenSession {
     const proofData = getCalldata(proof).flat().flat().reduce((out, cur) => out + cur.slice(2), '0x');
     return {
       abi,
-      chain: byChain[chainId].chain,
-      address: byChain[chainId].PrivateToken,
+      chain: pool.PrivateToken.chain,
+      address: pool.PrivateToken.address,
       functionName: 'verifyProof',
       args: [ proofData, '0x' + noteDataHex ],
     };
   }
 }
 
-function calcMultiHash(input) {
-  let hash = poseidon2([input[0], input[1]]);
-  for(let i = 2; i<input.length; i++) {
-    hash = poseidon2([hash, input[i]]);
-  }
-  return hash;
+export function poolId(pool) {
+  return `${pool.PrivateToken.address}:${pool.PrivateToken.chain.id}`;
 }
 
 function combineBigIntToHex(bigints, maxBits) {

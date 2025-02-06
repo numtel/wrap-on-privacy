@@ -1,19 +1,15 @@
-import {sepolia, holesky} from 'wagmi/chains';
+import {sepolia} from 'wagmi/chains';
 sepolia.rpcUrls.default.http[0] = 'https://rpc.ankr.com/eth_sepolia';
 
-export const byChain = {
-  11155111: {
-    PrivateToken: '0x114D1413b34799a41aBc8C6409D8432966f16C83',
-    KeyRegistry: '0x1BbF48d8178743605C0BE1e5708Bf7e0a38B22E0',
-    explorer: 'https://sepolia.etherscan.io/address/',
+export const defaultPool = {
+  name: 'Sepolia Test Pool',
+  PrivateToken: {
+    address: '0x114D1413b34799a41aBc8C6409D8432966f16C83',
     chain: sepolia,
   },
-  17000: {
-    PrivateToken: '0xc56553eD0c94971E36cF9d41C45d030B3D53A7bc',
-    KeyRegistry: '0x9CE924e8FF0FA7B962f65daA425CcFf2e56063a4',
-    explorer: 'https://holesky.etherscan.io/address/',
-    chain: holesky,
+  KeyRegistry: {
+    address: '0x1BbF48d8178743605C0BE1e5708Bf7e0a38B22E0',
+    chain: sepolia,
   },
-}
+};
 
-export const defaultChain = 11155111;

@@ -13,8 +13,6 @@ import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
 
 import DarkModeDetector from '../components/DarkModeDetector.js';
 
-import {byChain} from '../contracts.js';
-
 const chainsFixed = removeDuplicates(chains);
 
 const wagmiConfig = getDefaultConfig({

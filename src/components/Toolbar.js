@@ -22,11 +22,12 @@ import AboutForm from './AboutForm.js';
 import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 import DisplayAddress from './DisplayAddress.js';
+import PoolMan from './PoolMan.js';
 
-import PrivateTokenSession from '../PrivateTokenSession.js';
-import { byChain, defaultChain } from '../contracts.js';
+import PrivateTokenSession, {poolId} from '../PrivateTokenSession.js';
+import { defaultPool } from '../contracts.js';
 
-export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
+export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
   const account = useAccount();
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
@@ -36,6 +37,7 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
   const [showSetup, setShowSetup] = useState(false);
   const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
   const [showMenu, setShowMenu] = useState(0);
+  const [showPoolMan, setShowPoolMan] = useState(false);
   const menuRef = useRef(null);
 
   const menu = {
@@ -51,6 +53,7 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
         onClick: () => sesh.download(),
         disabled: !sesh,
       },
+      // TODO change sesh password dialog
       {
         label: 'Log In...',
         onClick: () => setShowSetup(true),
@@ -72,11 +75,23 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
         disabled: !sesh || !account.isConnected,
       },
     ],
-    Chain: Object.values(byChain).map(({chain}) => ({
-      label: `${chain.name}`,
-      checked: chainId === chain.id,
-      onClick: () => setChainId(chain.id),
-    })),
+    Pool: [
+      ...(sesh ? sesh.pools.map(thisPool => ({
+        label: thisPool.name,
+        checked: poolId(pool) === poolId(thisPool),
+        onClick: () => setPool(thisPool),
+      })) : [{
+        label: defaultPool.name,
+        checked: true,
+        onClick: () => {},
+      }]),
+      { sep: true },
+      {
+        label: 'Manage Pools...',
+        disabled: !sesh,
+        onClick: () => setShowPoolMan(true),
+      },
+    ],
     View: [
       {
         label: 'Refresh',
@@ -111,7 +126,7 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
 
   useEffect(() => {
     setRefreshStatus(x => x+1);
-  }, [chainId]);
+  }, [pool]);
 
   useEffect(() => {
     if(!sesh && PrivateTokenSession.hasLocalStorage()) {
@@ -194,10 +209,10 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
           <EnvelopeIcon className="h-8 w-8 block" />
           Transfer
         </button>
-        <AboutForm {...{ chainId, setShowAbout, showAbout }} />
+        <AboutForm {...{ pool, setShowAbout, showAbout }} />
         {showSend && (
           <SendForm
-            {...{ chainId, sesh, setShowSend, showSend, setRefreshStatus }}
+            {...{ pool, sesh, setShowSend, showSend, setRefreshStatus }}
             tokenAddr={activePool}
           />
         )}
@@ -228,7 +243,7 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
           )}
         </button>
         {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup }} />}
-        <SaveToRegistry {...{chainId, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
+        <SaveToRegistry {...{pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
         <button
           className="wallet"
           onClick={() => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal()}
@@ -237,6 +252,7 @@ export default function Toolbar({ chainId, setChainId, sesh, setSesh, setRefresh
           {account.isConnected ? <DisplayAddress address={account.address} /> : 'Wallet'}
         </button>
       </div>
+      {showPoolMan && <PoolMan {...{sesh, setSesh, pool, setShowPoolMan, showPoolMan}} />}
     </>
   );
 }

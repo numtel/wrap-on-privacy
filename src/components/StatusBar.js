@@ -8,11 +8,9 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/16/solid';
 
-import {byChain, defaultChain} from '../contracts.js';
-
-export default function StatusBar({ chainId, sesh, refreshCounter, syncStatus }) {
+export default function StatusBar({ pool, sesh, refreshCounter, syncStatus }) {
   const account = useAccount();
-  const pubKeyTx = sesh && chainId && sesh.registerTx(chainId);
+  const pubKeyTx = sesh && pool && sesh.registerTx(pool);
   const contracts = [
     {
       ...pubKeyTx,

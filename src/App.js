@@ -12,7 +12,7 @@ import Toolbar from './components/Toolbar.js';
 import StatusBar from './components/StatusBar.js';
 import TokenTable from './components/TokenTable.js';
 import IncomingTable from './components/IncomingTable.js';
-import { byChain, defaultChain } from './contracts.js';
+import { defaultPool } from './contracts.js';
 
 export function App() {
   return (<>
@@ -25,12 +25,9 @@ export function App() {
 
 function AppInner() {
   const account = useAccount();
-  const [chainId, setChainId] = useState(() => {
-    let chainId = account.chainId || defaultChain;
-    if(!(chainId in byChain)) chainId = defaultChain;
-    return chainId;
-  });
+  const [pool, setPool] = useState(defaultPool);
   const [sesh, setSesh] = useState(null);
+  // TODO should be called activeToken instead
   const [activePool, setActivePool] = useState(null);
   const [refreshCounter, setRefreshStatus] = useState(0);
   const [curView, setCurView] = useState(0);
@@ -45,12 +42,12 @@ function AppInner() {
   return (
     <div id="main">
       <div className="top-border" />
-      <Toolbar {...{chainId, setChainId, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
+      <Toolbar {...{pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
       <div className="panel">
-        {curView === 0 && <TokenTable {...{chainId, sesh, activePool, setActivePool, refreshCounter}} />}
-        <IncomingTable hidden={curView!==1} {...{chainId, sesh, refreshCounter, setRefreshStatus, syncStatus, setSyncStatus, setActivePool}} />
+        {curView === 0 && <TokenTable {...{pool, sesh, activePool, setActivePool, refreshCounter}} />}
+        <IncomingTable hidden={curView!==1} {...{pool, sesh, refreshCounter, setRefreshStatus, syncStatus, setSyncStatus, setActivePool}} />
       </div>
-      <StatusBar {...{chainId, sesh, refreshCounter, syncStatus}} />
+      <StatusBar {...{pool, sesh, refreshCounter, syncStatus}} />
     </div>
   );
 }

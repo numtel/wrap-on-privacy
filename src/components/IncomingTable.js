@@ -17,14 +17,15 @@ import TokenDetails from './TokenDetails.js';
 import DisplayAddress from './DisplayAddress.js';
 import TimeView from './TimeView.js';
 import abi from '../abi/PrivateToken.json';
-import {byChain, defaultChain} from '../contracts.js';
+import {poolId} from '../PrivateTokenSession.js';
 
 // TODO proper support for treeIndex on scanForIncoming
-export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
+export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
   const treeIndex = 0;
   const account = useAccount();
   const { switchChainAsync } = useSwitchChain();
-  const publicClient = usePublicClient({ chainId });
+  const publicClient = usePublicClient({ chainId: pool.PrivateToken.chain.id });
+  const registryClient = usePublicClient({ chainId: pool.KeyRegistry.chain.id });
   const [contracts, setContracts] = useState([]);
   const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
   const [cleanDataUpdate, setCleanData] = useState([]);
@@ -36,37 +37,39 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
       setSyncStatus('Looking for new transactions...');
       setContracts([]);
       // TODO use wagmi/core multicall inside scanForIncoming instead of this useReadContracts spaghetti
-      const params = await sesh.scanForIncoming(publicClient, treeIndex, chainId);
-      const newCount = params.count - params.oldCount;
+      const params = await sesh.scanForIncoming(publicClient, treeIndex, pool);
+      let newCount = params.count - params.oldCount;
       if(newCount > 0) setSyncStatus(`Found ${newCount} transactions. Attempting decryption now...`);
       else setSyncStatus(null);
+
+      if(newCount < 0) newCount = 0;
 
       const contracts = new Array(newCount).fill(0).map((_, i) => [
         {
           abi,
-          chainId,
-          address: byChain[chainId].PrivateToken,
+          chainId: pool.PrivateToken.chain.id,
+          address: pool.PrivateToken.address,
           functionName: 'encryptedSends',
           args: [ treeIndex, i + params.oldCount ],
         },
         {
           abi,
-          chainId,
-          address: byChain[chainId].PrivateToken,
+          chainId: pool.PrivateToken.chain.id,
+          address: pool.PrivateToken.address,
           functionName: 'sendTimes',
           args: [ treeIndex, i + params.oldCount ],
         },
         {
           abi,
-          chainId,
-          address: byChain[chainId].PrivateToken,
+          chainId: pool.PrivateToken.chain.id,
+          address: pool.PrivateToken.address,
           functionName: 'sendAccounts',
           args: [ treeIndex, i + params.oldCount ],
         },
         {
           abi,
-          chainId,
-          address: byChain[chainId].PrivateToken,
+          chainId: pool.PrivateToken.chain.id,
+          address: pool.PrivateToken.address,
           functionName: 'sendHashes',
           args: [ treeIndex, i + params.oldCount ],
         },
@@ -74,7 +77,7 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
       setContracts(contracts);
     }
     sesh && !syncStatus && doAsync();
-  }, [refreshCounter, treeIndex, chainId, setSyncStatus]);
+  }, [refreshCounter, treeIndex, pool, setSyncStatus]);
 
   useEffect(() => {
     async function asyncWork() {
@@ -86,7 +89,7 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
         allDecrypts.push((async function() {
           const cleanData = [];
           const index = i/4 + firstIndex;
-          const decrypted = await sesh.decryptIncoming(data[i].result, chainId);
+          const decrypted = await sesh.decryptIncoming(data[i].result, pool);
           setSyncStatus(`Scanning ${index}/${lastIndex}...`);
           if(decrypted && decrypted.hash === data[i+3].result) {
             const newItem = {
@@ -107,13 +110,13 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
             });
           }
           // Push item to sesh
-          sesh.setLastScanned(treeIndex, contracts[0].chainId, index, cleanData[0]);
+          sesh.setLastScanned(treeIndex, pool, index, cleanData[0]);
           // Re-render
           setCleanData(cleanData);
         })());
       }
       await Promise.all(allDecrypts);
-      sesh.incoming[chainId][treeIndex].count = lastIndex + 1;
+      sesh.incoming[poolId(pool)][treeIndex].count = lastIndex + 1;
       await sesh.saveToLocalStorage();
       // Re-render
       setCleanData([]);
@@ -122,7 +125,7 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
     if(isSuccess) {
       asyncWork();
     }
-  }, [isSuccess, setSyncStatus, chainId]);
+  }, [isSuccess, setSyncStatus, pool]);
 
   useEffect(() => {
     toast.dismiss();
@@ -150,12 +153,12 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
 
   async function acceptIncoming(item) {
     toast.loading('Generating proof...');
-    const tx = await sesh.receiveTx(chainId, treeIndex, item, publicClient);
+    const tx = await sesh.receiveTx(pool, treeIndex, item, publicClient, registryClient);
     toast.dismiss();
     toast.loading('Waiting for transaction...');
 
-    if(account.chainId !== chainId) {
-      await switchChainAsync({ chainId });
+    if(account.chainId !== pool.PrivateToken.chain.id) {
+      await switchChainAsync({ chainId: pool.PrivateToken.chain.id });
     }
     writeContract(tx);
   }
@@ -165,21 +168,21 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
   }
 
   if(hidden) return null;
-  if(sesh && (chainId in sesh.incoming) && (treeIndex in sesh.incoming[chainId])) return (
+  if(sesh && (poolId(pool) in sesh.incoming) && (treeIndex in sesh.incoming[poolId(pool)])) return (
     <GenericSortableTable
       onActiveChange={handleRowSelection}
       columns={[
         {key:'index', label: 'Index'},
         {key:'decrypted', label: 'Incoming Amount', render: (item) => (
           <AlreadySubmitted
-            {...{sesh, chainId, refreshCounter}} client={publicClient} newItem={item}
+            {...{sesh, pool, refreshCounter}} client={publicClient} newItem={item}
             ifNot={
               <button onClick={() => acceptIncoming(item)} className="link" title="Accept Incoming Transaction">
-                <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+                <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{pool}} />
               </button>
             }
             ifSubmitted={
-              <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{chainId}} />
+              <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{pool}} />
             }
           />
         )},
@@ -187,12 +190,12 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
           <TimeView timestamp={item.time} />
         )},
         {key:'sender', label: 'Sender', render: (item) => (
-          <a className="link" href={`${byChain[chainId].explorer}${item.sender}`} target="_blank" rel="noreferrer">
+          <a className="link" href={`${pool.PrivateToken.chain.blockExplorers.default.url}/address/${item.sender}`} target="_blank" rel="noreferrer">
             <DisplayAddress address={item.sender} />
           </a>
         )},
       ]}
-      data={sesh.incoming[chainId][0].found.filter(x => 'sendAmount' in x)}
+      data={sesh.incoming[poolId(pool)][0].found.filter(x => 'sendAmount' in x)}
     />
   );
   else return (
@@ -205,20 +208,20 @@ export default function LoadIncoming({ chainId, sesh, refreshCounter, setRefresh
 }
 
 
-function AlreadySubmitted({ sesh, newItem, chainId, client, ifSubmitted, ifNot, refreshCounter }) {
+function AlreadySubmitted({ sesh, newItem, pool, client, ifSubmitted, ifNot, refreshCounter }) {
   const [submitted, setSubmitted] = useState(null);
   const keypair = sesh.balanceKeypair();
   const contract = getContract({
     client,
     abi,
-    address: byChain[chainId].PrivateToken,
+    address: pool.PrivateToken.address,
   });
 
   useEffect(() => {
     async function asyncWork() {
       const data = await contract.read.receivedHashes([poseidon6([
         newItem.tokenAddr,
-        chainId,
+        pool.PrivateToken.chain.id,
         newItem.sendAmount,
         newItem.sendBlinding,
         keypair.publicKey,
