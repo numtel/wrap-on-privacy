@@ -105,6 +105,7 @@ export default class PrivateTokenSession {
   static hasLocalStorage() {
     return localStorage.hasOwnProperty(SESH_KEY);
   }
+  // TODO use indexedDB instead for larger max quota
   static async loadFromLocalStorage(password) {
     return PrivateTokenSession.import(JSON.parse(localStorage.getItem(SESH_KEY)), password);
   }

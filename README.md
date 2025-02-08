@@ -1,10 +1,14 @@
 # Wrap on Privacy
 
+*This project has not been audited and should not be used in production!*
+
 Transaction notes encrypted using [post-quantum NTRU algorithm](https://github.com/numtel/ntru-circom)
 
 Buy a coffee without exposing your entire financial history!
 
-[Project started at ETHGlobal Bangkok 2024](https://ethglobal.com/showcase/wrap-on-privacy-ryuw6)
+* [Deployed on Github](https://numtel.github.io/wrap-on-privacy/) (so you can trust its source to be unmodified)
+* [Protocol Documentation](PROTOCOL.md)
+* [Project started at ETHGlobal Bangkok 2024](https://ethglobal.com/showcase/wrap-on-privacy-ryuw6)
 
 ## Installation
 
