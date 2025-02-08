@@ -1,0 +1,44 @@
+name: Deploy Vite App
+
+on:
+  push:
+    branches:
+      - main  # Runs on every push to the main branch
+
+permissions:
+  contents: read  # Required for checkout
+  pages: write    # Required for deployment
+  id-token: write # Required for authentication
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20  # Update to your Node.js version
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Vite Project
+        run: npm run build:frontend
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5  # Updated to latest version
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3  # Updated to correct version
+        with:
+          path: dist  # Ensure this matches your build output directory
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4  # Ensures proper deployment
+
