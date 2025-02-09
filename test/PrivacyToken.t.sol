@@ -7,6 +7,7 @@ import {LeafAlreadyExists} from "../contracts/InternalLeanIMT.sol";
 import "./MockPrivacyVerifier.sol";
 import "./MockERC20.sol";
 import "./MockAToken.sol";
+import "./MockUserValidator.sol";
 
 contract PrivacyTokenTest is Test {
   PrivacyToken public wrapper;
@@ -21,7 +22,7 @@ contract PrivacyTokenTest is Test {
     tokenAddr = uint256(uint160(address(token)));
     verifier = new MockPrivacyVerifier();
     // Very small max tree size to test switching to new trees
-    wrapper = new PrivacyToken(address(verifier), 2);
+    wrapper = new PrivacyToken(address(verifier), address(0), 2);
   }
 
   function encodeProof(PubSignals memory pubs) internal pure returns(bytes memory out) {
@@ -285,6 +286,56 @@ contract PrivacyTokenTest is Test {
     // and the wrapper’s balance should be 0.
     assertEq(aToken.balanceOf(address(this)), 2000);
     assertEq(aToken.balanceOf(address(wrapper)), 0);
+  }
+
+  function test_UserValidation() public {
+    bytes memory mockNotice = abi.encode(69);
+    MockUserValidator validator = new MockUserValidator();
+    PrivacyToken vWrapper = new PrivacyToken(address(verifier), address(validator), 2**32);
+
+    uint privateAmount = 10;
+    uint tokenHash = 345;
+    uint mintNullifier = 234;
+    uint nonceAfterMint = 123;
+    uint encBalanceAfterMint = 456;
+    uint myPublicKey = 567;
+    uint mintHash = 789;
+    uint publicTokenAddr = uint(uint160(address(token)));
+
+    token.mint(privateAmount);
+    token.approve(address(vWrapper), privateAmount + 1);
+    assertEq(token.balanceOf(address(this)), privateAmount);
+
+    // Cannot mint more than balance
+    PubSignals memory mintPubs = PubSignals(
+      uint(0), // treeIndex
+      1, // publicMode mint
+      block.chainid,
+      0, // encryptedBalance,
+      0, // oldBalanceNonce,
+      nonceAfterMint, // newBalanceNonce,
+      mintNullifier, // receiveNullifier,
+      tokenHash,
+      encBalanceAfterMint, // newBalance,
+      myPublicKey,
+      0, // treeRoot,
+      mintHash, // hash
+      publicTokenAddr,
+      0, // publicAddr
+      privateAmount // publicAmount
+    );
+
+    // Mock validator defaults to false
+    try vWrapper.verifyProof(encodeProof(mintPubs), mockNotice) {
+      // This is expected to fail
+      revert TestError();
+    } catch (bytes memory reason) {
+      assertEq(PrivacyToken__InvalidUser.selector, firstFourBytes(reason));
+    }
+
+    // Allow validation success
+    validator.setRetval(true);
+    vWrapper.verifyProof(encodeProof(mintPubs), mockNotice);
   }
 }
 

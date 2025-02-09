@@ -15,6 +15,10 @@ interface IVerifier {
   ) external view returns (bool);
 }
 
+interface IUserValidator {
+  function isUserValid(address account) external view returns (bool);
+}
+
 struct PrivateAccount {
   uint256 encryptedBalance;
   uint256 nonce;
@@ -39,6 +43,7 @@ struct PubSignals {
   uint256 publicAmount;
 }
 
+error PrivacyToken__InvalidUser();
 error PrivacyToken__InvalidChainId();
 error PrivacyToken__InvalidProof();
 error PrivacyToken__DuplicateNullifier();
@@ -53,6 +58,7 @@ contract PrivacyToken {
   using InternalLeanIMT for LeanIMTData;
 
   IVerifier public immutable verifier;
+  IUserValidator public immutable userValidator;
   uint256 public immutable treeMaxSize;
 
   address[] public liveTokens;
@@ -72,8 +78,9 @@ contract PrivacyToken {
   // keyed by treeRoot
   mapping(uint256 => uint256) public treeRootCreationTimes;
 
-  constructor(address _verifier, uint _treeMaxSize) {
+  constructor(address _verifier, address _userValidator, uint _treeMaxSize) {
     verifier = IVerifier(_verifier);
+    if(_userValidator != address(0)) userValidator = IUserValidator(_userValidator);
     treeMaxSize = _treeMaxSize;
     treeCount = 1;
   }
@@ -131,6 +138,9 @@ contract PrivacyToken {
   }
 
   function verifyProof(bytes memory proofData, bytes memory noticeData) external {
+    if(address(userValidator) != address(0) && !userValidator.isUserValid(msg.sender)) {
+      revert PrivacyToken__InvalidUser();
+    }
     PubSignals memory pubs = _verifyProof(proofData);
 
     // Ensure this receive hasn't happened before

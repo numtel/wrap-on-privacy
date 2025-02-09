@@ -35,3 +35,13 @@ Transaction Hash Component | Description
 
 While this frontend uses NTRU, the protocol does not impose any specific algorithm for notice data encryption. Adding more available algorithms only requires updating the frontend.
 
+## User Validation
+
+For extensibility, each pool may be constructed with an optional user validation contract. If specified, the contract at the given address is expected to satisfy this simple interface:
+
+```solidity
+interface IUserValidator {
+  function isUserValid(address account) external view returns (bool);
+}
+```
+

@@ -10,6 +10,6 @@ contract Deploy is Script {
     uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
     vm.startBroadcast(deployerPrivateKey);
 
-    new PrivacyToken(vm.envAddress("VERIFIER_ADDRESS"), 2**32);
+    new PrivacyToken(vm.envAddress("VERIFIER_ADDRESS"), address(0), 2**32);
   }
 }
