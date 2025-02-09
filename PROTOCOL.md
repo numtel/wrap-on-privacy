@@ -45,3 +45,33 @@ interface IUserValidator {
 }
 ```
 
+<details>
+<summary>Example user validator contract that allows owners of an NFT to create a privacy pool for a community</summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IUserValidator {
+    function isUserValid(address account) external view returns (bool);
+}
+
+interface IERC721 {
+    function balanceOf(address owner) external view returns (uint256);
+}
+
+contract ERC721UserValidator is IUserValidator {
+    IERC721 public immutable nftContract;
+
+    constructor(address _nftContract) {
+        require(_nftContract != address(0), "Invalid contract address");
+        nftContract = IERC721(_nftContract);
+    }
+
+    function isUserValid(address account) external view override returns (bool) {
+        return nftContract.balanceOf(account) > 0;
+    }
+}
+
+```
+</details>
