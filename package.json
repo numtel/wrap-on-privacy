@@ -15,7 +15,6 @@
     "deploy:registry-contract": "forge script script/KeyRegistry.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv"
   },
   "dependencies": {
-    "@crema-labs/aes-circom": "0.0.2",
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
     "@fortawesome/free-brands-svg-icons": "^6.5.2",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
