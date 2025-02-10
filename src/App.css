@@ -76,7 +76,7 @@ label.text input:disabled,
 label.text select:disabled { background:var(--face); }
 
 button { color: var(--text); }
-.button { padding: 5px 8px; border-radius: 3px; background:var(--face); border: 2px outset var(--etch); margin: 0 10px; }
+.button { padding: 5px 8px; border-radius: 3px; background:var(--face); border: 2px outset var(--etch); margin: 0 10px; white-space:nowrap; }
 .button:active { border: 2px inset var(--etch); outline:1px solid var(--highlight); }
 .button:hover { background:var(--hover); }
 .button:disabled { background: var(--face); color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight); border: 2px outset; }

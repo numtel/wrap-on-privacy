@@ -15,6 +15,24 @@ import DarkModeDetector from '../components/DarkModeDetector.js';
 
 export const chainsFixed = removeDuplicates(chains);
 
+export function findChainKey(chainId) {
+  for (let key of Object.keys(chainsFixed)) {
+    if (chainsFixed[key].id === chainId) return key;
+  }
+}
+
+export function ChainSelect({ value, setValue, disabled }) {
+  return (
+    <select value={value} disabled={disabled} onChange={(e) => setValue(e.target.value)}>
+      {Object.keys(chainsFixed).map((chainKey) => (
+        <option key={chainKey} value={chainKey}>
+          {chainsFixed[chainKey].name} ({chainsFixed[chainKey].id})
+        </option>
+      ))}
+    </select>
+  );
+}
+
 const wagmiConfig = getDefaultConfig({
   appName: 'Wrap on Privacy',
   projectId: '3ab784972e6540d0095810e72372cfd1',

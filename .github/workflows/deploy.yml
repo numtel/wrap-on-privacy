@@ -27,6 +27,17 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly # Change to a specific version if needed
+
+      - name: Install Dependencies
+        run: forge install
+
+      - name: Compile Contracts
+        run: forge compile
+
       - name: Build Vite Project
         run: npm run build:frontend
 

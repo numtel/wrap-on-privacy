@@ -23,6 +23,7 @@ import SendForm from './SendForm.js';
 import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
 import DisplayAddress from './DisplayAddress.js';
 import PoolMan from './PoolMan.js';
+import PoolDeploy from './PoolDeploy.js';
 import ColorScheme from './ColorScheme.js';
 
 import PrivateTokenSession, {poolId} from '../PrivateTokenSession.js';
@@ -39,6 +40,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
   const [showMenu, setShowMenu] = useState(0);
   const [showPoolMan, setShowPoolMan] = useState(false);
+  const [showPoolDeploy, setShowPoolDeploy] = useState(false);
   const [showColorScheme, setShowColorScheme] = useState(false);
   const menuRef = useRef(null);
 
@@ -92,6 +94,11 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         label: 'Manage Pools...',
         disabled: !sesh,
         onClick: () => setShowPoolMan(true),
+      },
+      {
+        label: 'Deploy New Pool...',
+        disabled: !sesh,
+        onClick: () => setShowPoolDeploy(true),
       },
     ],
     View: [
@@ -170,6 +177,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   return (
     <>
       {showPoolMan && <PoolMan {...{sesh, setShowPoolMan, showPoolMan}} />}
+      {showPoolDeploy && <PoolDeploy {...{sesh, pool, setShowPoolDeploy, showPoolDeploy}} />}
       {showColorScheme && <ColorScheme {...{sesh, setShowColorScheme, showColorScheme, setRefreshStatus}} />}
       <div className="toolbar menubar" ref={menuRef}>
         <div className="vr"></div>

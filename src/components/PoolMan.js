@@ -1,17 +1,13 @@
 import { useState } from 'react';
+import { useReadContracts } from 'wagmi';
 
 import Dialog from './Dialog.js';
 import GenericSortableTable from './SortableTable.js';
 import DisplayAddress from './DisplayAddress.js';
-import { chainsFixed } from './WalletWrapper.js';
+import { chainsFixed, findChainKey, ChainSelect } from './WalletWrapper.js';
 
 import { downloadTextFile } from '../utils.js';
-
-function findChainKey(chainId) {
-  for (let key of Object.keys(chainsFixed)) {
-    if (chainsFixed[key].id === chainId) return key;
-  }
-}
+import abi from '../abi/PrivateToken.json';
 
 export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
   const [updateCount, setUpdateCount] = useState(0);
@@ -196,7 +192,7 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
             <button disabled={selectedIndex === null} className="button" onClick={handleDuplicate}>
               Duplicate
             </button>
-            <button disabled={selectedIndex === null} className="button" onClick={handleDelete}>
+            <button disabled={selectedIndex === null || sesh.pools.length < 2} className="button" onClick={handleDelete}>
               Delete...
             </button>
             <button className="button" onClick={handleImport}>
@@ -236,6 +232,12 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
                 onChange={(e) => setPrivacyTokenContract(e.target.value)}
               />
             </label>
+            {selectedIndex !== null && <p>
+              <a href={`${chainsFixed[privacyTokenChain].blockExplorers.default.url}/address/${privacyTokenContract}`} className="link" rel="noopener" target="_blank">
+                View Contract on Etherscan
+              </a><br />
+              <VerifierLink chainId={chainsFixed[privacyTokenChain].id} {...{privacyTokenContract}} />
+            </p>}
           </fieldset>
           <fieldset>
             <legend>KeyRegistry contract</legend>
@@ -251,6 +253,11 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
                 onChange={(e) => setKeyRegistryContract(e.target.value)}
               />
             </label>
+            {selectedIndex !== null && <p>
+              <a href={`${chainsFixed[keyRegistryChain].blockExplorers.default.url}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
+                View Contract on Etherscan
+              </a><br />
+            </p>}
           </fieldset>
           <div className="controls">
             <button disabled={selectedIndex === null} className="button">
@@ -271,15 +278,19 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
   );
 }
 
-function ChainSelect({ value, setValue, disabled }) {
-  return (
-    <select value={value} disabled={disabled} onChange={(e) => setValue(e.target.value)}>
-      {Object.keys(chainsFixed).map((chainKey) => (
-        <option key={chainKey} value={chainKey}>
-          {chainsFixed[chainKey].name} ({chainsFixed[chainKey].id})
-        </option>
-      ))}
-    </select>
-  );
+function VerifierLink({ chainId, privacyTokenContract }) {
+  const contracts = [
+    {
+      abi,
+      address: privacyTokenContract,
+      chainId,
+      functionName: 'verifier',
+    },
+  ];
+  const { data, isError, isLoading, refetch } = useReadContracts({contracts, watch:false});
+  if(isLoading) return (<span>Loading...</span>);
+  if(isError || (data && !data[0].result)) return (<span>Unable to determine verifier!</span>);
+  if(data) return (<a href={`https://circuitscan.org/chain/${chainId}/address/${data[0].result}`} className="link" rel="noopener" target="_blank">
+    Verifier on Circuitscan
+  </a>);
 }
-
