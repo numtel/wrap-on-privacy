@@ -19,6 +19,8 @@ import TimeView from './TimeView.js';
 import abi from '../abi/PrivateToken.json';
 import {poolId} from '../PrivateTokenSession.js';
 
+const PAGE_SIZE = 50;
+
 // TODO proper support for treeIndex on scanForIncoming
 export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
   const treeIndex = 0;
@@ -34,15 +36,13 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
 
   useEffect(() => {
     async function doAsync() {
-      setSyncStatus('Looking for new transactions...');
       setContracts([]);
       // TODO use wagmi/core multicall inside scanForIncoming instead of this useReadContracts spaghetti
       const params = await sesh.scanForIncoming(publicClient, treeIndex, pool);
       let newCount = params.count - params.oldCount;
-      if(newCount > 0) setSyncStatus(`Found ${newCount} transactions. Attempting decryption now...`);
-      else setSyncStatus(null);
 
       if(newCount < 0) newCount = 0;
+      if(newCount > PAGE_SIZE) newCount = PAGE_SIZE;
 
       const contracts = new Array(newCount).fill(0).map((_, i) => [
         {
@@ -77,7 +77,7 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
       setContracts(contracts);
     }
     sesh && !syncStatus && doAsync();
-  }, [refreshCounter, treeIndex, pool, setSyncStatus]);
+  }, [refreshCounter, treeIndex, pool, setSyncStatus, syncStatus]);
 
   useEffect(() => {
     async function asyncWork() {
