@@ -137,7 +137,13 @@ contract PrivacyToken {
     return (fixedAmount * totalSupply) / scaledSupply;
   }
 
-  function verifyProof(bytes memory proofData, bytes memory noticeData) external {
+  function verifyProofMulti(bytes[] memory data) external {
+    for(uint i = 0; i < data.length; i+=2) {
+      verifyProof(data[i], data[i+1]);
+    }
+  }
+
+  function verifyProof(bytes memory proofData, bytes memory noticeData) public {
     if(address(userValidator) != address(0) && !userValidator.isUserValid(msg.sender)) {
       revert PrivacyToken__InvalidUser();
     }
