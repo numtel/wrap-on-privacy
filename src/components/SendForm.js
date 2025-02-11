@@ -261,7 +261,7 @@ export default function SendForm({ pool, sesh, tokenAddr, setShowSend, showSend,
           </button></p>
         </fieldset>
       </div>
-      <div className="controls">
+      <div className="controls center">
         <button disabled={isPending || (data && txPending) || !!loading || !balanceData || (source === 'public' && publicBalance < amountParsed)|| (source === 'private' && privateBalance < amountParsed)} className="button" type="submit">
           {loading || (source === 'public' && recipType === 'private' && balanceData && amountParsed > balanceData[1].result ? 'Approve' : 'Send')}
         </button>

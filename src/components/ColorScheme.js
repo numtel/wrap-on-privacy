@@ -88,6 +88,7 @@ export default function ColorScheme({ sesh, setShowColorScheme, showColorScheme,
             </button>
           </div>
           <GenericSortableTable
+            className="max-h-96 overflow-auto"
             onActiveChange={handleRowSelection}
             columns={[{ key: 'name', label: 'Property Name' }]}
             data={Object.keys(sesh.colorScheme).map(x=>({name: x}))}

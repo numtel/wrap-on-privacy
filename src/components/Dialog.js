@@ -43,7 +43,7 @@ export default function Dialog({ show, setShow, children, className, noClose }) 
   return (
     <dialog {...{className}} ref={elRef}>
       {!noClose && setShow && <button className="button close" onClick={() => setShow(false)}>
-        <XMarkIcon className="h-5 w-5 inline-block align-top" />
+        <XMarkIcon className="h-5 w-5 inline-block" />
       </button>}
       {children}
     </dialog>
