@@ -170,6 +170,7 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
   if(hidden) return null;
   if(sesh && (poolId(pool) in sesh.incoming) && (treeIndex in sesh.incoming[poolId(pool)])) return (
     <GenericSortableTable
+      className={sesh.hideAlreadyAccepted ? 'hideAccepted' : ''}
       onActiveChange={handleRowSelection}
       columns={[
         {key:'index', label: 'Index'},
@@ -182,7 +183,9 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
               </button>
             }
             ifSubmitted={
-              <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{pool}} />
+              <span className="submitted">
+                <TokenDetails maybeScaled={true} amount={item.sendAmount} address={item.tokenAddr} {...{pool}} />
+              </span>
             }
           />
         )},

@@ -83,7 +83,11 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
       ...(sesh ? sesh.pools.map(thisPool => ({
         label: thisPool.name,
         checked: poolId(pool) === poolId(thisPool),
-        onClick: () => setPool(thisPool),
+        onClick: () => {
+          sesh.lastPool = poolId(thisPool);
+          sesh.saveToLocalStorage();
+          setPool(thisPool);
+        },
       })) : [{
         label: defaultPool.name,
         checked: true,
@@ -111,17 +115,36 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         disabled: !sesh,
         onClick: () => setShowColorScheme(true),
       },
+      {
+        label: 'Hide Already Accepted',
+        disabled: !sesh,
+        checked: sesh && sesh.hideAlreadyAccepted,
+        onClick: () => {
+          sesh.hideAlreadyAccepted = !sesh.hideAlreadyAccepted;
+          sesh.saveToLocalStorage();
+          setRefreshStatus(x => x+1);
+        },
+      },
       { sep: true },
       {
         label: 'Token List',
         checked: curView === 0,
-        onClick: () => setCurView(0),
+        onClick: () => {
+          if(!sesh) return;
+          sesh.lastView = 0;
+          sesh.saveToLocalStorage();
+          setCurView(0);
+        },
       },
       {
         label: 'Incoming Transactions',
         checked: curView === 1,
-        onClick: () => setCurView(1),
         disabled: !sesh,
+        onClick: () => {
+          sesh.lastView = 1;
+          sesh.saveToLocalStorage();
+          setCurView(1);
+        },
       },
     ],
     Help: [
@@ -135,6 +158,16 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   useEffect(() => {
     if (sesh) {
       setShowSetup(false);
+      // Restore session viewport
+      if(sesh.lastPool) {
+        const thisPool = sesh.pools.filter(x => poolId(x) === sesh.lastPool);
+        if(thisPool.length > 0) {
+          setPool(thisPool[0]);
+        }
+      }
+      if(sesh.lastView) {
+        setCurView(sesh.lastView);
+      }
     }
   }, [sesh]);
 
