@@ -30,6 +30,14 @@ import {defaultPool} from'./contracts.js';
 
 export const SESH_KEY = 'private-token-session';
 
+// IndexedDB is async but we want this answer synchronously
+let hasStoredSesh = false;
+getJSON().then((data) => {
+  if(data) hasStoredSesh = true;
+}).catch((error) => {
+  console.error('Unexpected', error);
+});
+
 export default class PrivateTokenSession {
   constructor(options) {
     Object.assign(this, {
@@ -101,18 +109,19 @@ export default class PrivateTokenSession {
   }
   async saveToLocalStorage() {
     const data = await this.export();
-    localStorage.setItem(SESH_KEY, JSON.stringify(data));
+    hasStoredSesh = true;
+    await storeJSON(JSON.stringify(data));
   }
   async download() {
     const data = await this.export();
     downloadTextFile(JSON.stringify(data), 'private-wallet.sesh');
   }
   static hasLocalStorage() {
-    return localStorage.hasOwnProperty(SESH_KEY);
+    return hasStoredSesh;
   }
-  // TODO use indexedDB instead for larger max quota
   static async loadFromLocalStorage(password) {
-    return PrivateTokenSession.import(JSON.parse(localStorage.getItem(SESH_KEY)), password);
+    const data = await getJSON();
+    return PrivateTokenSession.import(JSON.parse(await getJSON()), password);
   }
   static async import(data, password) {
     const instance = new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
@@ -523,5 +532,47 @@ async function decryptJson(encryptedData, password) {
   );
 
   return dec.decode(decrypted);
+}
+
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("WrapOnPrivacy", 1);
+
+        request.onupgradeneeded = (event) => {
+            let db = event.target.result;
+            if (!db.objectStoreNames.contains("jsonStore")) {
+                db.createObjectStore("jsonStore", { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
+export function storeJSON(data) {
+    return openDatabase().then((db) => {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction("jsonStore", "readwrite");
+            const store = transaction.objectStore("jsonStore");
+            const request = store.put({ id: SESH_KEY, data });
+
+            request.onsuccess = () => resolve("Data stored successfully");
+            request.onerror = (event) => reject(event.target.error);
+        });
+    });
+}
+
+function getJSON() {
+    return openDatabase().then((db) => {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction("jsonStore", "readonly");
+            const store = transaction.objectStore("jsonStore");
+            const request = store.get(SESH_KEY);
+
+            request.onsuccess = () => resolve(request.result ? request.result.data : null);
+            request.onerror = (event) => reject(event.target.error);
+        });
+    });
 }
 

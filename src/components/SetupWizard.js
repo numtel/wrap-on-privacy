@@ -8,7 +8,7 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import PrivateTokenSession, {SESH_KEY} from '../PrivateTokenSession.js';
+import PrivateTokenSession, {storeJSON} from '../PrivateTokenSession.js';
 
 import FileDropZone from './FileDropZone.js';
 import Dialog from './Dialog.js';
@@ -111,14 +111,14 @@ function Login({sesh, setSesh, setStep}) {
 }
 
 function ImportSession({sesh, setStep}) {
-  function onFile(file) {
+  async function onFile(file) {
     if(PrivateTokenSession.hasLocalStorage() &&
       !confirm('Are you sure you wish to overwrite the existing session?\n\n' +
         'If you do not have the session backup file, ' +
         'you will lose access to any private funds from the account.')) {
       throw new Error('Session overwrite aborted!');
     }
-    localStorage.setItem(SESH_KEY, file);
+    await storeJSON(file);
     setStep(-1);
   }
   return (<>
