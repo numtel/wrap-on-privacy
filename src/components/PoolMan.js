@@ -256,7 +256,7 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
             </label>
             {selectedIndex !== null && <p>
               <a href={`${explorerUrl(chainsFixed[keyRegistryChain])}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
-                View Contract on Etherscan
+                View Contract on Explorer
               </a><br />
             </p>}
           </fieldset>
