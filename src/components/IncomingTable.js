@@ -17,7 +17,7 @@ import TokenDetails from './TokenDetails.js';
 import DisplayAddress from './DisplayAddress.js';
 import TimeView from './TimeView.js';
 import abi from '../abi/PrivateToken.json';
-import {poolId} from '../PrivateTokenSession.js';
+import {poolId, explorerUrl} from '../PrivateTokenSession.js';
 
 const PAGE_SIZE = 50;
 
@@ -190,7 +190,7 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
           <TimeView timestamp={item.time} />
         )},
         {key:'sender', label: 'Sender', render: (item) => (
-          <a className="link" href={`${pool.PrivateToken.chain.blockExplorers.default.url}/address/${item.sender}`} target="_blank" rel="noreferrer">
+          <a className="link" href={`${explorerUrl(pool.PrivateToken.chain)}/address/${item.sender}`} target="_blank" rel="noreferrer">
             <DisplayAddress address={item.sender} />
           </a>
         )},

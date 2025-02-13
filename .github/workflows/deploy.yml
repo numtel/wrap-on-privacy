@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # Update to your Node.js version
+          node-version: 20
           cache: npm
 
       - name: Install Dependencies
@@ -30,7 +30,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly # Change to a specific version if needed
+          version: nightly
 
       - name: Install Dependencies
         run: forge install
@@ -38,18 +38,21 @@ jobs:
       - name: Compile Contracts
         run: forge compile
 
+      - name: Generate Solc Inputs
+        run: bash generate-solc-inputs.sh
+
       - name: Build Vite Project
         run: npm run build:frontend
 
       - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5  # Updated to latest version
+        uses: actions/configure-pages@v5
 
       - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3  # Updated to correct version
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: dist  # Ensure this matches your build output directory
+          path: dist
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4  # Ensures proper deployment
+        uses: actions/deploy-pages@v4
 

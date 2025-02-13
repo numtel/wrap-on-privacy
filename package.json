@@ -11,8 +11,7 @@
     "test": "mocha -t 50000 && forge test",
     "compile:circuit": "circomkit compile privacytoken",
     "deploy:circuit": "circuitscan deploy:circom -b -p groth16 -v v2.2.0 -s 0.7.5 main/privacytoken.circom",
-    "deploy:contract": "VERIFIER_ADDRESS=0x86371a665be9333dd9d4be59b49ff41942b8115a forge script script/PrivacyToken.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv",
-    "deploy:registry-contract": "forge script script/KeyRegistry.s.sol:Deploy --rpc-url https://rpc.ankr.com/eth_sepolia  --broadcast --verify -vvvv"
+    "deploy:contracts": "bash generate-solc-inputs.sh"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
@@ -24,6 +23,7 @@
     "@tanstack/react-query": "^5.62.15",
     "@zk-kit/circuits": "0.2.3",
     "@zk-kit/imt": "2.0.0-beta",
+    "blockscout-urls": "^1.0.1",
     "circomlib": "2.0.5",
     "ffjavascript": "0.2.62",
     "ntru-circom": "0.0.15",

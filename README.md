@@ -19,12 +19,9 @@ Requires Node.js, Circom, and Foundry installed
 ```sh
 $ npm install
 
-# Run frontend locally
-$ npm run dev
-
 # Test circuits
 $ npm run test:libraries
-# Test contracts
+# Compile and test contracts
 $ npm run test:contracts
 
 # Compile circuits before attempting to deploy them
@@ -34,13 +31,12 @@ $ npm run compile:circuit
 $ circuitscan login <apiKey>
 $ npm run deploy:circuit
 
-# Create .env with PRIVATE_KEY and ETHERSCAN_API_KEY
-# Update the verifier contract addresses in the script in package.json
-# Then, deploy the contract
-$ npm run deploy:contract
+# Generate the build artifacts for the contracts
+# Contracts deployment transactions sent from the frontend in "Deploy New Pool..."
+$ npm run deploy:contracts
 
-# Also, the key registry contract may be deployed
-$ npm run deploy:registry-contract
+# Run frontend locally
+$ npm run dev
 ```
 
 ## Transfer Types

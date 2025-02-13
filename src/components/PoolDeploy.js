@@ -15,20 +15,22 @@ import { chainsFixed, findChainKey, ChainSelect } from './WalletWrapper.js';
 import privacyTokenBuild from '../../out/PrivacyToken.sol/PrivacyToken.json';
 import poseidonBuild from '../../out/PoseidonT3.sol/PoseidonT3.json';
 import keyRegistryBuild from '../../out/KeyRegistry.sol/KeyRegistry.json';
+import privacyTokenInput from '../../out/build-info/input-PrivacyToken.json';
+import poseidonInput from '../../out/build-info/input-PoseidonT3.json';
+import keyRegistryInput from '../../out/build-info/input-KeyRegistry.json';
 
 import { downloadTextFile } from '../utils.js';
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
-// TODO verify contracts on etherscan/sourcify
 export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDeploy }) {
   const account = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const [isLoading, setIsLoading] = useState(false);
   const [saveToSession, setSaveToSession] = useState(true);
   const [exportDetails, setExportDetails] = useState(true);
-  const [newKeyRegistry, setNewKeyRegistry] = useState(true);
-  const [poolName, setPoolName] = useState('');
+  const [newKeyRegistry, setNewKeyRegistry] = useState(false);
+  const [poolName, setPoolName] = useState('New Pool');
   const [privacyTokenChain, setPrivacyTokenChain] = useState('mainnet');
   const [poseidonContract, setPoseidonContract] = useState('');
   const [verifierContract, setVerifierContract] = useState('');
@@ -39,6 +41,10 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if(!walletClient.data) {
+      toast.error('Wallet not connected!');
+      return;
+    }
     if((saveToSession || exportDetails) && !poolName) {
       toast.error('Missing Pool Name!');
       return;
@@ -59,10 +65,16 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
           hash: keyRegistryTxHash,
         });
         toast.dismiss();
+        toast.loading('Verifying KeyRegistry on Sourcify...');
+        await verifyOnSourcifyWithRetry(
+          chainsFixed[privacyTokenChain].id,
+          keyRegistryTx.contractAddress,
+          keyRegistryInput,
+          keyRegistryBuild.metadata.compiler.version,
+          'KeyRegistry',
+        );
+        toast.dismiss();
       }
-      console.log(poseidonBuild);
-      console.log(privacyTokenBuild);
-      console.log(privacyTokenBuild.bytecode.object, privacyTokenBuild.bytecode.object.length);
       if(!poseidonContract) {
         toast.loading('Deploying PoseidonT3 library...');
         const poseidonTxHash = await walletClient.data.deployContract({
@@ -81,15 +93,24 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
           ? poseidonContract.slice(2)
           : poseidonTx.contractAddress.slice(2)
       );
-      console.log(bytecode, bytecode.length);
+      const privacyTokenArgs = [verifierContract, userValidatorContract || ZERO_ADDR, 2**32];
       const privacyTokenTxHash = await walletClient.data.deployContract({
         abi: privacyTokenBuild.abi,
         bytecode,
-        args: [verifierContract, userValidatorContract || ZERO_ADDR, 2**32],
+        args: privacyTokenArgs,
       });
       privacyTokenTx = await publicClient.waitForTransactionReceipt({
         hash: privacyTokenTxHash,
       });
+      toast.dismiss();
+      toast.loading('Verifying PrivacyToken on Sourcify...');
+      await verifyOnSourcifyWithRetry(
+        chainsFixed[privacyTokenChain].id,
+        privacyTokenTx.contractAddress,
+        privacyTokenInput,
+        privacyTokenBuild.metadata.compiler.version,
+        'PrivacyToken',
+      );
       toast.dismiss();
       toast.success('Deployment Complete!');
       const newPool = {
@@ -196,4 +217,56 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
       </form>
     </Dialog>
   );
+}
+
+async function verifyOnSourcify(chainId, contractAddress, input, compilerVersion, contractName) {
+  try {
+    const apiUrl = `https://sourcify.dev/server/verify/solc-json`;
+    const body = JSON.stringify({
+      address: contractAddress,
+      chain: String(chainId),
+      files: {
+        value: JSON.stringify(input),
+      },
+      compilerVersion,
+      contractName,
+    }, null, 2);
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+
+    // Handle the response
+    if (response.ok) {
+      const result = await response.json();
+      console.log("Verification successful:", result);
+      return result;
+    } else {
+      const errorText = await response.text();
+      console.error("Verification failed:", errorText);
+      throw new Error(errorText);
+    }
+  } catch (error) {
+    console.error("Error verifying contract:", error);
+    throw error;
+  }
+}
+
+// Thanks ChatGPT
+async function retryAsync(asyncFunction, retries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await asyncFunction();
+        } catch (error) {
+            if (attempt === retries) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
+export function verifyOnSourcifyWithRetry(...args) {
+  return retryAsync(async () => verifyOnSourcify(...args), 3, 6000);
 }

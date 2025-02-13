@@ -6,6 +6,7 @@ import GenericSortableTable from './SortableTable.js';
 import DisplayAddress from './DisplayAddress.js';
 import { chainsFixed, findChainKey, ChainSelect } from './WalletWrapper.js';
 
+import {explorerUrl} from '../PrivateTokenSession.js';
 import { downloadTextFile } from '../utils.js';
 import abi from '../abi/PrivateToken.json';
 
@@ -233,8 +234,8 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
               />
             </label>
             {selectedIndex !== null && <p>
-              <a href={`${chainsFixed[privacyTokenChain].blockExplorers.default.url}/address/${privacyTokenContract}`} className="link" rel="noopener" target="_blank">
-                View Contract on Etherscan
+              <a href={`${explorerUrl(chainsFixed[privacyTokenChain])}/address/${privacyTokenContract}`} className="link" rel="noopener" target="_blank">
+                View Contract on Explorer
               </a><br />
               <VerifierLink chainId={chainsFixed[privacyTokenChain].id} {...{privacyTokenContract}} />
             </p>}
@@ -254,7 +255,7 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
               />
             </label>
             {selectedIndex !== null && <p>
-              <a href={`${chainsFixed[keyRegistryChain].blockExplorers.default.url}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
+              <a href={`${explorerUrl(chainsFixed[keyRegistryChain])}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
                 View Contract on Etherscan
               </a><br />
             </p>}

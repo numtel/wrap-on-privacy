@@ -10,6 +10,7 @@ import NTRU, {
   expandArray,
   trimPolynomial,
 } from 'ntru-circom';
+import blockscoutUrls from 'blockscout-urls';
 
 import NTRUWorkerWrapper from './NTRUWorkerWrapper.js';
 import {
@@ -353,6 +354,11 @@ export default class PrivateTokenSession {
       args: [ proofData, '0x' + noteDataHex ],
     };
   }
+}
+
+export function explorerUrl(chain) {
+  if(chain.id in blockscoutUrls) return `https://${blockscoutUrls[chain.id]}`;
+  return chain.blockExplorers.default.url;
 }
 
 export function poolId(pool) {
