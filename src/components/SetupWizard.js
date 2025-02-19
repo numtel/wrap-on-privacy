@@ -8,12 +8,13 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import PrivateTokenSession, {storeJSON} from '../PrivateTokenSession.js';
+import PrivateTokenSession, {poolId, storeJSON} from '../PrivateTokenSession.js';
 
 import FileDropZone from './FileDropZone.js';
 import Dialog from './Dialog.js';
+import {DISABLED_STATUS} from './IncomingTable.js';
 
-export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) {
+export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup, setPool, setCurView, setSyncStatus }) {
   const [step, setStep] = useState(PrivateTokenSession.hasLocalStorage() ? -1 : 0);
   const primaryInputRef = useRef(null);
 
@@ -23,7 +24,7 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) 
     }
   }, [step]);
   return (<Dialog show={showSetup} setShow={setShowSetup}>
-    {step === -1 && <Login {...{sesh, setSesh, setStep}} />}
+    {step === -1 && <Login {...{sesh, setSesh, setStep, setPool, setCurView, setSyncStatus}} />}
     {step === 2 && <SetPassword {...{sesh, setSesh, setStep}} />}
     {step === 1 && <ImportSession {...{sesh, setSesh, setStep}} />}
     {step === 0 && <>
@@ -53,8 +54,9 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup }) 
   </Dialog>);
 }
 
-function Login({sesh, setSesh, setStep}) {
+function Login({sesh, setSesh, setStep, setPool, setCurView, setSyncStatus}) {
   const [newPw, setNewPw] = useState('');
+  const [disableSync, setDisableSync] = useState(false);
   const passwordInputRef = useRef(null);
 
   useEffect(() => {
@@ -68,7 +70,21 @@ function Login({sesh, setSesh, setStep}) {
     event.preventDefault();
     try {
       toast.loading('Loading session...');
-      setSesh(await PrivateTokenSession.loadFromLocalStorage(newPw));
+      const sesh = await PrivateTokenSession.loadFromLocalStorage(newPw, {disableSync});
+      // Restore session viewport
+      if(sesh.lastPool) {
+        const thisPool = sesh.pools.filter(x => poolId(x) === sesh.lastPool);
+        if(thisPool.length > 0) {
+          setPool(thisPool[0]);
+        }
+      }
+      if(sesh.lastView) {
+        setCurView(sesh.lastView);
+      }
+      if(sesh.disableSync) {
+        setSyncStatus(DISABLED_STATUS);
+      }
+      setSesh(sesh);
       toast.dismiss();
       toast.success('Login Successful!');
     } catch(error) {
@@ -94,6 +110,10 @@ function Login({sesh, setSesh, setStep}) {
               onChange={(e) => setNewPw(e.target.value)}
               ref={passwordInputRef}
             />
+          </label>
+          <label className="radio">
+            <input type="checkbox" checked={disableSync} onChange={e => setDisableSync(e.target.checked)} />
+            <span>Disable Sync</span>
           </label>
         </div>
       </div>

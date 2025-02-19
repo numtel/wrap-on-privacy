@@ -16,7 +16,7 @@ export function remaining(seconds, onlyFirst, timestamp) {
   for(let i = units.length - 1; i >= 0;  i--) {
     if(remaining >= units[i].value) {
       if(units[i].unit === null)
-        return (new Date(Number(timestamp * 1000n))).toLocaleString();
+        return (new Date(Number(timestamp) * 1000)).toLocaleString();
       const count = Math.floor(remaining / units[i].value);
       out.push(count.toString(10) + ' ' + units[i].unit + (count !== 1 ? 's' : ''));
       if(onlyFirst) break;

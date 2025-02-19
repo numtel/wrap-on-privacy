@@ -119,12 +119,14 @@ export default class PrivateTokenSession {
   static hasLocalStorage() {
     return hasStoredSesh;
   }
-  static async loadFromLocalStorage(password) {
-    const data = await getJSON();
-    return PrivateTokenSession.import(JSON.parse(await getJSON()), password);
+  static async loadFromLocalStorage(password, overwrite) {
+    const data = JSON.parse(await getJSON());
+    return PrivateTokenSession.import(data, password, overwrite);
   }
-  static async import(data, password) {
-    const instance = new PrivateTokenSession(JSON.parse(await decryptJson(data, password)));
+  static async import(data, password, overwrite) {
+    const decrypted = JSON.parse(await decryptJson(data, password));
+    Object.assign(decrypted, overwrite);
+    const instance = new PrivateTokenSession(decrypted);
     await instance.init();
     return instance;
   }

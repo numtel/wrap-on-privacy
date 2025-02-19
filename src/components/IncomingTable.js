@@ -20,6 +20,7 @@ import abi from '../abi/PrivateToken.json';
 import {poolId, explorerUrl} from '../PrivateTokenSession.js';
 
 const PAGE_SIZE = 50;
+export const DISABLED_STATUS = 'Sync Disabled.';
 
 // TODO proper support for treeIndex on scanForIncoming
 export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshStatus, hidden, syncStatus, setSyncStatus, setActivePool }) {
@@ -83,14 +84,18 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
     async function asyncWork() {
       const firstIndex = contracts[0].args[1];
       const lastIndex = contracts[contracts.length-1].args[1];
-      setSyncStatus(`Scanning from ${firstIndex} to ${lastIndex}...`);
+      setSyncStatus(curVal => {
+        if(curVal === DISABLED_STATUS) {
+          return DISABLED_STATUS;
+        }
+        return `Scanning from ${firstIndex} to ${lastIndex}...`
+      });
       const allDecrypts = [];
       for(let i = 0; i < data.length; i+=4) {
         allDecrypts.push((async function() {
           const cleanData = [];
           const index = i/4 + firstIndex;
           const decrypted = await sesh.decryptIncoming(data[i].result, pool);
-          setSyncStatus(`Scanning ${index}/${lastIndex}...`);
           if(decrypted && decrypted.hash === data[i+3].result) {
             const newItem = {
               index,
@@ -120,7 +125,13 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
       await sesh.saveToLocalStorage();
       // Re-render
       setCleanData([]);
-      setSyncStatus(null);
+      setSyncStatus(curVal => {
+        if(curVal === DISABLED_STATUS) {
+          return DISABLED_STATUS;
+        }
+        // syncStatus null = not active, false = disabled
+        return null;
+      });
     }
     if(isSuccess) {
       asyncWork();

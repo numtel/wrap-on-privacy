@@ -25,11 +25,12 @@ import DisplayAddress from './DisplayAddress.js';
 import PoolMan from './PoolMan.js';
 import PoolDeploy from './PoolDeploy.js';
 import ColorScheme from './ColorScheme.js';
+import {DISABLED_STATUS} from './IncomingTable.js';
 
 import PrivateTokenSession, {poolId} from '../PrivateTokenSession.js';
 import { defaultPool } from '../contracts.js';
 
-export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView }) {
+export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView, setSyncStatus }) {
   const account = useAccount();
   const connectModal = useConnectModal();
   const accountModal = useAccountModal();
@@ -125,6 +126,17 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
           setRefreshStatus(x => x+1);
         },
       },
+      {
+        label: 'Disable Incoming Sync',
+        disabled: !sesh,
+        checked: sesh && sesh.disableSync,
+        onClick: () => {
+          sesh.disableSync = !sesh.disableSync;
+          sesh.saveToLocalStorage();
+          setSyncStatus(curVal => sesh.disableSync ? DISABLED_STATUS : null);
+          setRefreshStatus(x => x+1);
+        },
+      },
       { sep: true },
       {
         label: 'Token List',
@@ -158,16 +170,6 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   useEffect(() => {
     if (sesh) {
       setShowSetup(false);
-      // Restore session viewport
-      if(sesh.lastPool) {
-        const thisPool = sesh.pools.filter(x => poolId(x) === sesh.lastPool);
-        if(thisPool.length > 0) {
-          setPool(thisPool[0]);
-        }
-      }
-      if(sesh.lastView) {
-        setCurView(sesh.lastView);
-      }
     }
   }, [sesh]);
 
@@ -292,7 +294,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
             </>
           )}
         </button>
-        {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup }} />}
+        {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup, setPool, setCurView, setSyncStatus }} />}
         <SaveToRegistry {...{pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
         <button
           className="wallet"

@@ -54,7 +54,7 @@ function AppInner() {
   return (
     <div id="main">
       <div className="top-border" />
-      <Toolbar {...{pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView}} />
+      <Toolbar {...{pool, setPool, sesh, setSesh, setRefreshStatus, activePool, curView, setCurView, setSyncStatus, syncStatus}} />
       <div className="panel">
         {curView === 0 && <TokenTable {...{pool, sesh, activePool, setActivePool, refreshCounter}} />}
         <IncomingTable hidden={curView!==1} {...{pool, sesh, refreshCounter, setRefreshStatus, syncStatus, setSyncStatus, setActivePool}} />

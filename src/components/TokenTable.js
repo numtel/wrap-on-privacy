@@ -44,7 +44,7 @@ export default function LoadActiveTokenCount({ pool, sesh, setActivePool, refres
     <GenericSortableTable
       disallowSelection={true}
       columns={[{key:'x', label: ''}]}
-      data={[{x:isLoading ? 'Loading...' : isError ? 'Error!' : 'No active pools!'}]}
+      data={[{x:isLoading ? 'Loading...' : isError ? 'Error!' : 'No tokens yet!'}]}
     />
   );
 }
