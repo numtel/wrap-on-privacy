@@ -16,7 +16,7 @@ interface IVerifier {
 }
 
 interface IUserValidator {
-  function isUserValid(address account) external view returns (bool);
+  function isUserValid(address account, PubSignals memory pubs) external returns (bool);
 }
 
 struct PrivateAccount {
@@ -144,10 +144,10 @@ contract PrivacyToken {
   }
 
   function verifyProof(bytes memory proofData, bytes memory noticeData) public {
-    if(address(userValidator) != address(0) && !userValidator.isUserValid(msg.sender)) {
+    PubSignals memory pubs = _verifyProof(proofData);
+    if(address(userValidator) != address(0) && !userValidator.isUserValid(msg.sender, pubs)) {
       revert PrivacyToken__InvalidUser();
     }
-    PubSignals memory pubs = _verifyProof(proofData);
 
     // Ensure this receive hasn't happened before
     if(receivedHashes[pubs.receiveNullifier] == true) {

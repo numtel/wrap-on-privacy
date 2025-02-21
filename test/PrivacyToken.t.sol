@@ -336,6 +336,9 @@ contract PrivacyTokenTest is Test {
     // Allow validation success
     validator.setRetval(true);
     vWrapper.verifyProof(encodeProof(mintPubs), mockNotice);
+
+    // First invocation is rolled back, only the success goes through
+    assertEq(validator.counter(), 1);
   }
 }
 

@@ -40,10 +40,36 @@ While this frontend uses NTRU, the protocol does not impose any specific algorit
 For extensibility, each pool may be constructed with an optional user validation contract. If specified, the contract at the given address is expected to satisfy this simple interface:
 
 ```solidity
+struct PubSignals {
+  uint256 treeIndex;
+  uint256 publicMode; // 1 = mint, 2 = burn
+  uint256 chainId;
+  uint256 encryptedBalance;
+  uint256 oldBalanceNonce;
+  uint256 newBalanceNonce;
+
+  uint256 receiveNullifier;
+  uint256 tokenHash;
+  uint256 newBalance;
+  uint256 myPublicKey;
+  uint256 treeRoot;
+  uint256 hash;
+  uint256 publicTokenAddr;
+  uint256 publicAddress;
+  uint256 publicAmount;
+}
+
 interface IUserValidator {
-  function isUserValid(address account) external view returns (bool);
+  function isUserValid(address account, PubSignals memory pubs) external returns (bool);
 }
 ```
+
+A custom user validator can put any logical restrictions:
+
+* Limit to specific tokens
+* Keep track of inflows and outflows.
+* Require KYC checks
+* Any other safety checks...
 
 <details>
 <summary>Example user validator contract that allows owners of an NFT to create a privacy pool for a community</summary>
@@ -52,8 +78,11 @@ interface IUserValidator {
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// forge install numtel/wrap-on-privacy
+import {PubSignals} from "wrap-on-privacy/contracts/PrivacyToken.sol";
+
 interface IUserValidator {
-    function isUserValid(address account) external view returns (bool);
+    function isUserValid(address account, PubSignals memory pubs) external view returns (bool);
 }
 
 interface IERC721 {
@@ -68,7 +97,7 @@ contract ERC721UserValidator is IUserValidator {
         nftContract = IERC721(_nftContract);
     }
 
-    function isUserValid(address account) external view override returns (bool) {
+    function isUserValid(address account, PubSignals memory pubs) external override returns (bool) {
         return nftContract.balanceOf(account) > 0;
     }
 }
