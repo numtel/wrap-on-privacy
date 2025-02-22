@@ -228,6 +228,54 @@ function SetPassword({sesh, setSesh, setStep}) {
   </>);
 }
 
+export function ChangePw({sesh, showChangePw, setShowChangePw}) {
+  const [newPw, setNewPw] = useState('');
+  const [downloadSesh, setDownloadSesh] = useState(true);
+  const primaryInputRef = useRef(null);
+
+  async function onNext(event) {
+    event.preventDefault();
+    try {
+      sesh.password = newPw;
+      await sesh.saveToLocalStorage();
+      toast.dismiss();
+      toast.success('Password changed!');
+      setShowChangePw(false);
+      if(downloadSesh) await sesh.download();
+    } catch(error) {
+      console.error(error);
+      toast.dismiss();
+      toast.error(error.message);
+      return;
+    }
+  }
+
+  useEffect(() => {
+    if (showChangePw && primaryInputRef.current) {
+      primaryInputRef.current.focus();
+    }
+  }, [showChangePw]);
+
+  return (<Dialog show={showChangePw} setShow={setShowChangePw}>
+    <h2>Change Session Password</h2>
+    <form onSubmit={onNext}>
+      <label className="text">
+        <span>New password:</span>
+        <input ref={primaryInputRef} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
+      </label>
+      <label className="radio">
+        <input type="checkbox" checked={downloadSesh} onChange={e => setDownloadSesh(e.target.checked)} />
+        <span>Download Session File Backup</span>
+      </label>
+      <div className="controls center">
+        <button className="button" disabled={!newPw}>
+          Change Password
+        </button>
+      </div>
+    </form>
+  </Dialog>);
+}
+
 export function SaveToRegistry({pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}) {
   const account = useAccount();
   const { switchChainAsync } = useSwitchChain();

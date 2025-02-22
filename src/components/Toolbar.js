@@ -20,7 +20,7 @@ import {
 import Dialog from './Dialog.js';
 import AboutForm from './AboutForm.js';
 import SendForm from './SendForm.js';
-import SetupWizard, {SaveToRegistry} from './SetupWizard.js';
+import SetupWizard, {SaveToRegistry, ChangePw} from './SetupWizard.js';
 import DisplayAddress from './DisplayAddress.js';
 import PoolMan from './PoolMan.js';
 import PoolDeploy from './PoolDeploy.js';
@@ -39,6 +39,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   const [showSend, setShowSend] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [showSaveToRegistry, setShowSaveToRegistry] = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
   const [showMenu, setShowMenu] = useState(0);
   const [showPoolMan, setShowPoolMan] = useState(false);
   const [showPoolDeploy, setShowPoolDeploy] = useState(false);
@@ -58,7 +59,11 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         onClick: () => sesh.download(),
         disabled: !sesh,
       },
-      // TODO change sesh password dialog
+      {
+        label: 'Change Password...',
+        onClick: () => setShowChangePw(true),
+        disabled: !sesh,
+      },
       {
         label: 'Log In...',
         onClick: () => setShowSetup(true),
@@ -161,7 +166,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
     ],
     Help: [
       {
-        label: 'About',
+        label: 'About...',
         onClick: () => setShowAbout(true),
       },
     ],
@@ -296,6 +301,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         </button>
         {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup, setPool, setCurView, setSyncStatus }} />}
         <SaveToRegistry {...{pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
+        <ChangePw {...{sesh, showChangePw, setShowChangePw}} />
         <button
           className="wallet"
           onClick={() => account.isConnected ? accountModal.openAccountModal(): connectModal.openConnectModal()}
