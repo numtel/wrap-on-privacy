@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   useAccount,
@@ -6,6 +6,7 @@ import {
   useWalletClient,
   useSwitchChain,
 } from 'wagmi';
+import {encodeFunctionData} from 'viem';
 
 import Dialog from './Dialog.js';
 import GenericSortableTable from './SortableTable.js';
@@ -20,8 +21,10 @@ import poseidonInput from '../../out/build-info/input-PoseidonT3.json';
 import keyRegistryInput from '../../out/build-info/input-KeyRegistry.json';
 
 import { downloadTextFile } from '../utils.js';
+import abi from '../abi/PrivateToken.json';
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+const POSEIDON_KEY = 'contracts/PoseidonT3.sol:PoseidonT3';
 
 export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDeploy }) {
   const account = useAccount();
@@ -36,8 +39,60 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
   const [verifierContract, setVerifierContract] = useState('');
   const [userValidatorContract, setUserValidatorContract] = useState('');
 
+  const poolClient = usePublicClient({ chainId: pool.PrivateToken.chain.id });
   const publicClient = usePublicClient({ chainId: chainsFixed[privacyTokenChain].id });
   const walletClient = useWalletClient({ chainId: chainsFixed[privacyTokenChain].id });
+
+  useEffect(() => {
+    async function doAsyncWork() {
+      setPrivacyTokenChain(findChainKey(pool.PrivateToken.chain.id));
+
+      // No await so that these async tasks run simultaneously
+      poolClient.call({
+        to: pool.PrivateToken.address,
+        data: encodeFunctionData({
+          abi,
+          functionName: 'verifier',
+        }),
+      }).then(result => {
+        result.data && setVerifierContract('0x' + result.data.slice(26));
+      });
+
+      poolClient.call({
+        to: pool.PrivateToken.address,
+        data: encodeFunctionData({
+          abi,
+          functionName: 'userValidator',
+        }),
+      }).then(result => {
+        result.data && Number(result.data) !== 0 && setUserValidatorContract('0x' + result.data.slice(26));
+      });
+
+      fetch(`https://sourcify.dev/server/v2/contract/${pool.PrivateToken.chain.id}/${pool.PrivateToken.address}`)
+        .then(result => result.json())
+        .then(data => {
+          let matchType;
+          if(data.match === 'exact_match') {
+            matchType = 'full_match';
+          } else if(data.match === 'match') {
+            matchType = 'partial_match';
+          }
+
+          if(matchType) {
+            return fetch(`https://repo.sourcify.dev/contracts/${matchType}/${pool.PrivateToken.chain.id}/${pool.PrivateToken.address}/metadata.json`)
+              .then(result => result.json())
+              .then(data => {
+                if(POSEIDON_KEY in data.settings.libraries) {
+                  setPoseidonContract(data.settings.libraries[POSEIDON_KEY]);
+                }
+              });
+          }
+
+        });
+    }
+
+    pool && doAsyncWork();
+  }, [ pool ]);
 
   async function handleSubmit(event) {
     event.preventDefault();
