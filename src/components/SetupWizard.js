@@ -62,7 +62,7 @@ function Login({sesh, setSesh, setStep, setPool, setCurView, setSyncStatus}) {
   useEffect(() => {
     // Focus the password input when the component mounts
     if (passwordInputRef.current) {
-      passwordInputRef.current.focus();
+      setTimeout(() => passwordInputRef.current.focus(), 1);
     }
   }, []);
 
