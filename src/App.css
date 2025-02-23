@@ -108,8 +108,8 @@ form:focus-within .button:not([type="button"]):not([disabled])::after { content:
 .link:disabled, .link[disabled] {color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight);}
 .link svg { margin-right: 8px; }
 
-.banner { border:1px solid;border-color:var(--bevel1dark) var(--bevel1light) var(--bevel1light) var(--bevel1dark); position:relative; background:url(/world.png) no-repeat bottom center var(--banner);  background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }
-.banner::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; border: 1px solid;border-color: var(--bevel2dark) var(--bevel2light) var(--bevel2light) var(--bevel2dark); }
+.banner { border:1px solid;border-color: var(--bevel2dark) var(--bevel2light) var(--bevel2light) var(--bevel2dark); position:relative; background:url(/world.png) no-repeat bottom center var(--banner);  background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }
+.banner::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; border: 1px solid;border-color:var(--bevel1dark) var(--bevel1light) var(--bevel1light) var(--bevel1dark); }
 .banner.import { background-image:url(/spy.png);}
 .banner.registry { background-image:url(/contacts.png);}
 .banner.password { background-image:url(/lock.png);}
