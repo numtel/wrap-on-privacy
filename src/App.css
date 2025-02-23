@@ -105,7 +105,7 @@ form:focus-within .button:not([type="button"]):not([disabled])::after { content:
 
 .link { text-decoration:underline; color:var(--link); }
 .link:hover { color:var(--linkHover); }
-.link:disabled {color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight);}
+.link:disabled, .link[disabled] {color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight);}
 .link svg { margin-right: 8px; }
 
 .banner { border:1px solid;border-color:var(--bevel1dark) var(--bevel1light) var(--bevel1light) var(--bevel1dark); position:relative; background:url(/world.png) no-repeat bottom center var(--banner);  background-size:contain; margin:0 20px 15px 0;  width: 30%; flex-shrink:0; height: 300px; }

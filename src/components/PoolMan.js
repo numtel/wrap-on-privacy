@@ -233,12 +233,12 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
                 onChange={(e) => setPrivacyTokenContract(e.target.value)}
               />
             </label>
-            {selectedIndex !== null && <p>
-              <a href={`${explorerUrl(chainsFixed[privacyTokenChain])}/address/${privacyTokenContract}`} className="link" rel="noopener" target="_blank">
+            <p>
+              <a disabled={selectedIndex === null} href={`${explorerUrl(chainsFixed[privacyTokenChain])}/address/${privacyTokenContract}`} className="link" rel="noopener" target="_blank">
                 View Contract on Explorer
               </a><br />
-              <VerifierLink chainId={chainsFixed[privacyTokenChain].id} {...{privacyTokenContract}} />
-            </p>}
+              <VerifierLink disabled={selectedIndex === null} chainId={chainsFixed[privacyTokenChain].id} {...{privacyTokenContract}} />
+            </p>
           </fieldset>
           <fieldset>
             <legend>KeyRegistry contract</legend>
@@ -254,11 +254,11 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
                 onChange={(e) => setKeyRegistryContract(e.target.value)}
               />
             </label>
-            {selectedIndex !== null && <p>
-              <a href={`${explorerUrl(chainsFixed[keyRegistryChain])}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
+            <p>
+              <a disabled={selectedIndex === null} href={`${explorerUrl(chainsFixed[keyRegistryChain])}/address/${keyRegistryContract}`} className="link" rel="noopener" target="_blank">
                 View Contract on Explorer
               </a><br />
-            </p>}
+            </p>
           </fieldset>
           <div className="controls">
             <button disabled={selectedIndex === null} className="button">
@@ -279,7 +279,7 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
   );
 }
 
-function VerifierLink({ chainId, privacyTokenContract }) {
+function VerifierLink({ chainId, privacyTokenContract, disabled }) {
   const contracts = [
     {
       abi,
@@ -289,6 +289,9 @@ function VerifierLink({ chainId, privacyTokenContract }) {
     },
   ];
   const { data, isError, isLoading, refetch } = useReadContracts({contracts, watch:false});
+  if(disabled) return (<a disabled={true} href={`https://circuitscan.org/`} className="link" rel="noopener" target="_blank">
+    Verifier on Circuitscan
+  </a>);
   if(isLoading) return (<span>Loading...</span>);
   if(isError || (data && !data[0].result)) return (<span>Unable to determine verifier!</span>);
   if(data) return (<a href={`https://circuitscan.org/chain/${chainId}/address/${data[0].result}`} className="link" rel="noopener" target="_blank">
