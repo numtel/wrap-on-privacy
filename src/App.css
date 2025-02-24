@@ -98,10 +98,13 @@ button { color: var(--text); }
 .button:active:not(:disabled)::before { border-color: var(--bevel2dark) var(--bevel2light) var(--bevel2light) var(--bevel2dark); }
 .button:disabled { padding:5px 8px; background: var(--face); color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight); border: 1px solid;border-color: var(--bevel1light) var(--bevel1dark) var(--bevel1dark) var(--bevel1light); }
 .button:disabled::before {border-color:var(--bevel2light) var(--bevel2dark) var(--bevel2dark) var(--bevel2light); }
-form:focus-within .button:not([type="button"]):not([disabled]) { border-color:var(--text); }
-form:focus-within .button:not([type="button"]):not([disabled])::before {border-color:  var(--bevel1light) var(--bevel1dark) var(--bevel1dark) var(--bevel1light); }
+form:focus-within .button:not([type="button"]):not([disabled]),
+.button:focus:not([disabled]) { border-color:var(--text); }
+form:focus-within .button:not([type="button"]):not([disabled])::before,
+.button:focus:not([disabled])::before {border-color:  var(--bevel1light) var(--bevel1dark) var(--bevel1dark) var(--bevel1light); }
 form:focus-within .button:active:not([type="button"]):not([disabled])::before {border-color:  var(--bevel1dark) var(--bevel1light) var(--bevel1light) var(--bevel1dark); }
-form:focus-within .button:not([type="button"]):not([disabled])::after { content:""; position:absolute; top:3px; left:3px; right:3px; bottom:3px; pointer-events:none; border: 1px dotted var(--text); }
+form:focus-within .button:not([type="button"]):not([disabled])::after,
+.button:focus:not([disabled])::after { content:""; position:absolute; top:3px; left:3px; right:3px; bottom:3px; pointer-events:none; border: 1px dotted var(--text); }
 
 .link { text-decoration:underline; color:var(--link); }
 .link:hover { color:var(--linkHover); }

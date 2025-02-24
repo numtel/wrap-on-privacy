@@ -222,7 +222,7 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
 }
 
 
-function AlreadySubmitted({ sesh, newItem, pool, client, ifSubmitted, ifNot, refreshCounter }) {
+export function AlreadySubmitted({ sesh, newItem, pool, client, ifSubmitted, ifNot, refreshCounter }) {
   const [submitted, setSubmitted] = useState(null);
   const keypair = sesh.balanceKeypair();
   const contract = getContract({

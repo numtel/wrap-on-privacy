@@ -7,7 +7,7 @@ import DisplayAddress from './DisplayAddress.js';
 import { chainsFixed, findChainKey, ChainSelect } from './WalletWrapper.js';
 
 import {explorerUrl} from '../PrivateTokenSession.js';
-import { downloadTextFile } from '../utils.js';
+import { downloadTextFile, importJsonFile } from '../utils.js';
 import abi from '../abi/PrivateToken.json';
 
 export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
@@ -113,56 +113,47 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
     setUpdateCount(updateCount + 1);
   }
 
-  function handleImport() {
-    // Create an invisible file input element.
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json,text/plain';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const importedPool = JSON.parse(event.target.result);
-          // Restore chain details by replacing the chain object with the full chain info
-          // from chainsFixed (using the chain id).
-          if (
-            importedPool.PrivateToken &&
-            importedPool.PrivateToken.chain &&
-            importedPool.PrivateToken.chain.id
-          ) {
-            const tokenChainKey = findChainKey(importedPool.PrivateToken.chain.id);
-            if (tokenChainKey) {
-              importedPool.PrivateToken.chain = chainsFixed[tokenChainKey];
-            }
-          }
-          if (
-            importedPool.KeyRegistry &&
-            importedPool.KeyRegistry.chain &&
-            importedPool.KeyRegistry.chain.id
-          ) {
-            const keyRegistryChainKey = findChainKey(importedPool.KeyRegistry.chain.id);
-            if (keyRegistryChainKey) {
-              importedPool.KeyRegistry.chain = chainsFixed[keyRegistryChainKey];
-            }
-          }
-          // If the imported pool’s name already exists, generate a new name.
-          if (sesh.pools.some(pool => pool.name === importedPool.name)) {
-            importedPool.name = generateDuplicateName(importedPool.name, sesh.pools);
-          }
-          sesh.pools.push(importedPool);
-          sesh.saveToLocalStorage();
-          setUpdateCount(x => x + 1);
-        } catch (err) {
-          console.error('Error importing pool:', err);
-          alert('Failed to import pool: ' + err.message);
+  async function handleImport() {
+    try {
+      const importedPool = await importJsonFile();
+      if(typeof importedPool.name !== 'string'
+        || typeof importedPool.PrivateToken !== 'object'
+        || typeof importedPool.KeyRegistry !== 'object') {
+        throw new Error('Invalid pool import!');
+      }
+      // Restore chain details by replacing the chain object with the full chain info
+      // from chainsFixed (using the chain id).
+      if (
+        importedPool.PrivateToken &&
+        importedPool.PrivateToken.chain &&
+        importedPool.PrivateToken.chain.id
+      ) {
+        const tokenChainKey = findChainKey(importedPool.PrivateToken.chain.id);
+        if (tokenChainKey) {
+          importedPool.PrivateToken.chain = chainsFixed[tokenChainKey];
         }
-      };
-      reader.readAsText(file);
-    };
-    // Trigger the file selection dialog.
-    input.click();
+      }
+      if (
+        importedPool.KeyRegistry &&
+        importedPool.KeyRegistry.chain &&
+        importedPool.KeyRegistry.chain.id
+      ) {
+        const keyRegistryChainKey = findChainKey(importedPool.KeyRegistry.chain.id);
+        if (keyRegistryChainKey) {
+          importedPool.KeyRegistry.chain = chainsFixed[keyRegistryChainKey];
+        }
+      }
+      // If the imported pool’s name already exists, generate a new name.
+      if (sesh.pools.some(pool => pool.name === importedPool.name)) {
+        importedPool.name = generateDuplicateName(importedPool.name, sesh.pools);
+      }
+      sesh.pools.push(importedPool);
+      sesh.saveToLocalStorage();
+      setUpdateCount(x => x + 1);
+    } catch (err) {
+      console.error('Error importing pool:', err);
+      alert('Failed to import pool: ' + err.message);
+    }
   }
 
   function handleExport() {

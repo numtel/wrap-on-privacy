@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import {
-  useAccount,
-} from 'wagmi';
+import { toast } from 'react-hot-toast';
+import {useAccount} from 'wagmi';
 import {
   useConnectModal,
   useAccountModal,
@@ -24,6 +23,7 @@ import SetupWizard, {SaveToRegistry, ChangePw} from './SetupWizard.js';
 import DisplayAddress from './DisplayAddress.js';
 import PoolMan from './PoolMan.js';
 import PoolDeploy from './PoolDeploy.js';
+import ImportTx from './ImportTx.js';
 import ColorScheme from './ColorScheme.js';
 import {DISABLED_STATUS} from './IncomingTable.js';
 
@@ -44,6 +44,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
   const [showPoolMan, setShowPoolMan] = useState(false);
   const [showPoolDeploy, setShowPoolDeploy] = useState(false);
   const [showColorScheme, setShowColorScheme] = useState(false);
+  const [importTx, setImportTx] = useState(null);
   const menuRef = useRef(null);
 
   const menu = {
@@ -63,6 +64,22 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         label: 'Change Password...',
         onClick: () => setShowChangePw(true),
         disabled: !sesh,
+      },
+      {
+        label: 'Import Incoming Transaction...',
+        onClick: async () => {
+          try {
+            toast.loading('Importing transaction...');
+            const imported = await sesh.importIncoming(pool);
+            setImportTx(imported);
+            toast.dismiss();
+          } catch(error) {
+            toast.dismiss();
+            toast.error(error.message || 'Unable to import transaction!');
+            console.error(error);
+          }
+        },
+        disabled: !sesh || !account.isConnected,
       },
       {
         label: 'Log In...',
@@ -161,6 +178,16 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
           sesh.lastView = 1;
           sesh.saveToLocalStorage();
           setCurView(1);
+        },
+      },
+      {
+        label: 'Outgoing Transactions',
+        checked: curView === 2,
+        disabled: !sesh,
+        onClick: () => {
+          sesh.lastView = 2;
+          sesh.saveToLocalStorage();
+          setCurView(2);
         },
       },
     ],
@@ -301,6 +328,7 @@ export default function Toolbar({ pool, setPool, sesh, setSesh, setRefreshStatus
         </button>
         {showSetup && <SetupWizard {...{ sesh, setSesh, setShowSetup, showSetup, setPool, setCurView, setSyncStatus }} />}
         <SaveToRegistry {...{pool, sesh, showSaveToRegistry, setShowSaveToRegistry, setRefreshStatus}} />
+        {importTx && <ImportTx {...{importTx, setImportTx, sesh, pool, setRefreshStatus}} />}
         <ChangePw {...{sesh, showChangePw, setShowChangePw}} />
         <button
           className="wallet"

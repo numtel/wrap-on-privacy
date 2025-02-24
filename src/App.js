@@ -12,6 +12,7 @@ import Toolbar from './components/Toolbar.js';
 import StatusBar from './components/StatusBar.js';
 import TokenTable from './components/TokenTable.js';
 import IncomingTable from './components/IncomingTable.js';
+import OutgoingTable from './components/OutgoingTable.js';
 import { defaultPool } from './contracts.js';
 
 export function App() {
@@ -58,6 +59,7 @@ function AppInner() {
       <div className="panel">
         {curView === 0 && <TokenTable {...{pool, sesh, activePool, setActivePool, refreshCounter}} />}
         <IncomingTable hidden={curView!==1} {...{pool, sesh, refreshCounter, setRefreshStatus, syncStatus, setSyncStatus, setActivePool}} />
+        {curView === 2 && <OutgoingTable {...{pool, sesh, refreshCounter, setActivePool}} />}
       </div>
       <StatusBar {...{pool, sesh, refreshCounter, syncStatus}} />
       {cssInsert && <style>{cssInsert}</style>}

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Dialog from './Dialog.js';
 import GenericSortableTable from './SortableTable.js';
 
-import { downloadTextFile } from '../utils.js';
+import { downloadTextFile, importJsonFile } from '../utils.js';
 
 export default function ColorScheme({ sesh, setShowColorScheme, showColorScheme, setRefreshStatus }) {
   const [updateCount, setUpdateCount] = useState(0);
@@ -31,31 +31,17 @@ export default function ColorScheme({ sesh, setShowColorScheme, showColorScheme,
     setRefreshStatus(x => x+1);
   }
 
-  function handleImport() {
-    // Create an invisible file input element.
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json,text/plain';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const importedScheme = JSON.parse(event.target.result);
-          sesh.colorScheme = importedScheme;
-          sesh.saveToLocalStorage();
-          setUpdateCount(x => x + 1);
-          setRefreshStatus(x => x+1);
-        } catch (err) {
-          console.error('Error importing pool:', err);
-          alert('Failed to import pool: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    };
-    // Trigger the file selection dialog.
-    input.click();
+  async function handleImport() {
+    try {
+      const importedScheme = await importJsonFile();
+      sesh.colorScheme = importedScheme;
+      sesh.saveToLocalStorage();
+      setUpdateCount(x => x + 1);
+      setRefreshStatus(x => x+1);
+    } catch (err) {
+      console.error('Error importing color scheme:', err);
+      alert('Failed to import color scheme: ' + err.message);
+    }
   }
 
   function handleReset() {

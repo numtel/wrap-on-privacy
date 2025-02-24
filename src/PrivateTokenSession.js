@@ -21,6 +21,7 @@ import {
   symmetricEncrypt,
   symmetricDecrypt,
   downloadTextFile,
+  importJsonFile,
   randomBigInt,
 } from './utils.js';
 import abi from './abi/PrivateToken.json';
@@ -52,6 +53,7 @@ export default class PrivateTokenSession {
       },
       privateKey: genRandomBabyJubValue().toString(),
       incoming: {},
+      outgoing: {},
       pools: [],
       colorScheme: {
         face: null,
@@ -321,6 +323,38 @@ export default class PrivateTokenSession {
     const noteDataRaw = await encSesh.ntru.encryptBits(!recipAddr ? bigintToBits(randomBigInt(2n ** BigInt(ntru.N))) : noteMsg);
     const noteDataHex = combineBigIntToHex(noteDataRaw.value.map(x=>BigInt(x)), Math.log2(ntru.q)+1);
 
+    // Only store outgoing on mint or private send
+    if(!isBurn && recipAddr) {
+      const outItem = {
+        tokenAddr,
+        chainId: BigInt(pool.PrivateToken.chain.id),
+        sendAmount,
+        sendBlinding,
+        recipPublicKey,
+        hBytes,
+        recipAddr,
+        time: Math.floor(Date.now() / 1000),
+        hash: poseidon5([
+          tokenAddr,
+          pool.PrivateToken.chain.id,
+          sendAmount,
+          sendBlinding,
+          recipPublicKey
+        ]),
+      };
+      for(let key of Object.keys(outItem)) {
+        outItem[key] = typeof outItem[key] === 'bigint'
+          ? '0x' + outItem[key].toString(16)
+          : outItem[key];
+      }
+      if(!(poolId(pool) in this.outgoing)) {
+        this.outgoing[poolId(pool)] = [outItem];
+      } else {
+        this.outgoing[poolId(pool)].push(outItem);
+      }
+      await this.saveToLocalStorage();
+    }
+
     const newBalanceNonce = genRandomBabyJubValue();
     const balance = account[0] === 0n ? 0n : symmetricDecrypt(account[0], privateKey, account[1]);
     const finalBalance = symmetricEncrypt(
@@ -364,6 +398,33 @@ export default class PrivateTokenSession {
       functionName: 'verifyProof',
       args: [ proofData, '0x' + noteDataHex ],
     };
+  }
+  async importIncoming(pool) {
+    const incoming = await importJsonFile();
+    if(!incoming.sendAmount || !incoming.sendBlinding || !incoming.tokenAddr || !incoming.recipPublicKey) {
+      throw new Error('Invalid JSON data!');
+    }
+    const publicKey = '0x' + this.balanceKeypair().publicKey.toString(16);
+    if(incoming.recipPublicKey !== publicKey) {
+      throw new Error('Recipient key mismatch!');
+    }
+
+    // TODO: support treeIndex
+    const treeIndex = 0;
+
+    if(poolId(pool) in this.incoming && treeIndex in this.incoming[poolId(pool)]) {
+      const found = this.incoming[poolId(pool)][treeIndex].found;
+      for(let i = 0; i < found.length; i++) {
+        if(BigInt(found[i].receiveTxHash) === BigInt(incoming.hash)) {
+          incoming.index = found[i].index;
+        }
+      }
+    }
+    if(incoming.index === undefined) {
+      throw new Error('Hash not found in tree!');
+    }
+
+    return {incoming};
   }
 }
 

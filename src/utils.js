@@ -63,6 +63,34 @@ export function downloadTextFile(content, filename) {
   document.body.removeChild(link);
 }
 
+export function importJsonFile() {
+  return new Promise((resolve, reject) => {
+    // Create an invisible file input element.
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json,text/plain';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) reject(new Error('Cancelled'));
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedPool = JSON.parse(event.target.result);
+          resolve(importedPool);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.oncancel = () => {
+      reject(new Error('Cancelled'))
+    };
+    // Trigger the file selection dialog.
+    input.click();
+  });
+}
+
 
 // The following is adapted from circomkit/src/utils/calldata.ts
 /** Makes each value 32-bytes long hexadecimal. Does not check for overflows! */

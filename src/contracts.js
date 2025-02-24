@@ -4,7 +4,7 @@ sepolia.rpcUrls.default.http[0] = 'https://rpc.ankr.com/eth_sepolia';
 export const defaultPool = {
   name: 'Sepolia Test Pool',
   PrivateToken: {
-    address: '0x114D1413b34799a41aBc8C6409D8432966f16C83',
+    address: '0x96b0e23b7d4724bcbc03bc0da33cc839a679031c',
     chain: sepolia,
   },
   KeyRegistry: {
