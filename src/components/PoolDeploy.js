@@ -206,8 +206,7 @@ export default function PoolDeploy({ sesh, pool, setShowPoolDeploy, showPoolDepl
   const deployCount = (newKeyRegistry ? 1 : 0) + (!poseidonContract ? 1 : 0) + 1;
 
   return (
-    <Dialog show={showPoolDeploy} setShow={setShowPoolDeploy}>
-      <h2>Deploy New Pool</h2>
+    <Dialog title="Deploy New Pool" show={showPoolDeploy} setShow={setShowPoolDeploy}>
       <form onSubmit={handleSubmit}>
         <fieldset>
           <legend>Deployment Options</legend>

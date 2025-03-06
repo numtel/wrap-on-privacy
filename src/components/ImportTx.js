@@ -56,8 +56,7 @@ export default function ImportTx({importTx, setImportTx, pool, setRefreshStatus,
   }
 
   return (
-    <Dialog show={!!importTx} setShow={setImportTx}>
-      <h2>Import Transaction</h2>
+    <Dialog title="Import Transaction" show={!!importTx} setShow={setImportTx}>
       <AlreadySubmitted
         {...{sesh, pool}}
         client={publicClient}

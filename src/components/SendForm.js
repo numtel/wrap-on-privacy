@@ -214,8 +214,7 @@ export default function SendForm({ pool, sesh, tokenAddr, setShowSend, showSend,
     }
   }
 
-  return (<Dialog show={showSend} setShow={setShowSend}>
-    <h2>Transfer Tokens</h2>
+  return (<Dialog title="Transfer Tokens" show={showSend} setShow={setShowSend}>
     <form onSubmit={handleSubmit}>
       <div className="flex flex-col mb-4  space-y-4">
         <fieldset>

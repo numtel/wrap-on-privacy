@@ -58,8 +58,7 @@ export default function ColorScheme({ sesh, setShowColorScheme, showColorScheme,
   }
 
   return (
-    <Dialog show={showColorScheme} setShow={setShowColorScheme}>
-      <h2>Color Scheme</h2>
+    <Dialog title="Color Scheme" show={showColorScheme} setShow={setShowColorScheme}>
       <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
         <div className="flex flex-col space-y-4">
           <div className="controls">

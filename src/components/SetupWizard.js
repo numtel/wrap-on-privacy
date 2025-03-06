@@ -23,12 +23,20 @@ export default function SetupWizard({ sesh, setSesh, showSetup, setShowSetup, se
       primaryInputRef.current.focus();
     }
   }, [step]);
-  return (<Dialog show={showSetup} setShow={setShowSetup}>
+  return (<Dialog
+      title={
+        step === -1 ? 'Login to Session' :
+        step === 0 ? 'Wrap on Privacy Setup Wizard' :
+        step === 1 ? 'Import Session File' :
+        step === 2 ? 'Set Session Password' : 'Wrap on Privacy'
+      }
+      show={showSetup}
+      setShow={setShowSetup}
+    >
     {step === -1 && <Login {...{sesh, setSesh, setStep, setPool, setCurView, setSyncStatus}} />}
     {step === 2 && <SetPassword {...{sesh, setSesh, setStep}} />}
     {step === 1 && <ImportSession {...{sesh, setSesh, setStep}} />}
     {step === 0 && <>
-      <h2>Wrap on Privacy Setup Wizard</h2>
       <div className="flex">
         <div className="banner"></div>
         <div>
@@ -95,7 +103,6 @@ function Login({sesh, setSesh, setStep, setPool, setCurView, setSyncStatus}) {
     }
   }
   return (<>
-    <h2>Login to Session</h2>
     <form onSubmit={onNext}>
       <div className="flex">
         <div className="banner"></div>
@@ -142,7 +149,6 @@ function ImportSession({sesh, setStep}) {
     setStep(-1);
   }
   return (<>
-    <h2>Import Session File</h2>
     <div className="flex">
       <div className="banner import"></div>
       <div>
@@ -197,7 +203,6 @@ function SetPassword({sesh, setSesh, setStep}) {
     }
   }
   return (<>
-    <h2>Set Session Password</h2>
     <form onSubmit={onNext}>
       <div className="flex">
         <div className="banner password"></div>
@@ -256,8 +261,7 @@ export function ChangePw({sesh, showChangePw, setShowChangePw}) {
     }
   }, [showChangePw]);
 
-  return (<Dialog show={showChangePw} setShow={setShowChangePw}>
-    <h2>Change Session Password</h2>
+  return (<Dialog title="Change Session Password" show={showChangePw} setShow={setShowChangePw}>
     <form onSubmit={onNext}>
       <label className="text">
         <span>New password:</span>
@@ -321,8 +325,7 @@ export function SaveToRegistry({pool, sesh, showSaveToRegistry, setShowSaveToReg
     }
     writeContract(tx);
   }
-  return (<Dialog show={showSaveToRegistry} setShow={setShowSaveToRegistry}>
-    <h2>Save Public Key to Registry</h2>
+  return (<Dialog title="Save Public Key to Registry" show={showSaveToRegistry} setShow={setShowSaveToRegistry}>
     <div className="flex">
       <div className="banner registry"></div>
       <div>

@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/16/solid';
 
-export default function Dialog({ show, setShow, children, className, noClose }) {
+export default function Dialog({ title, show, setShow, children, className, noClose }) {
   const elRef = useRef();
 
   useEffect(() => {
@@ -42,10 +42,19 @@ export default function Dialog({ show, setShow, children, className, noClose }) 
 
   return (
     <dialog {...{className}} ref={elRef}>
-      {!noClose && setShow && <button className="button close" onClick={() => setShow(false)}>
-        <XMarkIcon className="h-5 w-5 inline-block" />
-      </button>}
-      {children}
+      {noClose ? children : (
+        <div className="content">
+          {title && (
+            <h2>
+              {title}
+              {!noClose && setShow && <button className="button close" onClick={() => setShow(false)}>
+                <XMarkIcon className="h-5 w-5 inline-block" />
+              </button>}
+            </h2>
+          )}
+          {children}
+        </div>
+      )}
     </dialog>
   );
 }

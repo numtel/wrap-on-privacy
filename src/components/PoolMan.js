@@ -176,8 +176,7 @@ export default function PoolMan({ sesh, setShowPoolMan, showPoolMan }) {
   }
 
   return (
-    <Dialog show={showPoolMan} setShow={setShowPoolMan}>
-      <h2>Pool Manager</h2>
+    <Dialog title="Pool Manager" show={showPoolMan} setShow={setShowPoolMan}>
       <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
         <div className="flex flex-col space-y-4">
           <div className="controls">
