@@ -42,17 +42,24 @@ export default function ImportTx({importTx, setImportTx, pool, setRefreshStatus,
   }, [data, isPending, isError, txError, txPending, txSuccess]);
 
   async function submit() {
-    setLoading(true);
-    // TODO: support treeIndex
-    const treeIndex = 0;
-    toast.loading('Generating Proof...');
-    const tx = await sesh.receiveTx(pool, treeIndex, importTx.incoming, publicClient, publicClient);
-    toast.dismiss();
+    try {
+      setLoading(true);
+      // TODO: support treeIndex
+      const treeIndex = 0;
+      toast.loading('Generating Proof...');
 
-    if(account.chainId !== pool.PrivateToken.chain.id) {
-      await switchChainAsync({ chainId: pool.PrivateToken.chain.id });
+      const tx = await sesh.receiveTx(pool, treeIndex, importTx.incoming, publicClient, publicClient);
+      toast.dismiss();
+
+      if(account.chainId !== pool.PrivateToken.chain.id) {
+        await switchChainAsync({ chainId: pool.PrivateToken.chain.id });
+      }
+      writeContract(tx);
+    } catch(error) {
+      setLoading(null);
+      toast.dismiss();
+      toast.error(error.message);
     }
-    writeContract(tx);
   }
 
   return (

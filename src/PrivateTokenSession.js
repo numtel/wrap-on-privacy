@@ -204,7 +204,8 @@ export default class PrivateTokenSession {
   }
   balanceKeypair() {
     const {privateKey} = this;
-    const publicKey = poseidon1([privateKey]);
+    // Ensure correct length
+    const publicKey = BigInt(('0x' + poseidon1([privateKey]).toString(16) + '00000000').slice(0, 66));
     return {publicKey, privateKey};
   }
   balanceViewTx(tokenAddr, pool) {
@@ -404,7 +405,8 @@ export default class PrivateTokenSession {
     if(!incoming.sendAmount || !incoming.sendBlinding || !incoming.tokenAddr || !incoming.recipPublicKey) {
       throw new Error('Invalid JSON data!');
     }
-    const publicKey = '0x' + this.balanceKeypair().publicKey.toString(16);
+    // Pad the end in case of trailing zeros getting trimmed
+    const publicKey = ('0x' + this.balanceKeypair().publicKey.toString(16) + '000000000').slice(0, 66);
     if(incoming.recipPublicKey !== publicKey) {
       throw new Error('Recipient key mismatch!');
     }
