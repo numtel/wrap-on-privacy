@@ -33,7 +33,7 @@
     "react-helmet": "^6.1.0",
     "react-hot-toast": "^2.4.1",
     "snarkjs": "0.7.5",
-    "viem": "2.22.2",
+    "viem": "2.23.12",
     "wagmi": "^2.14.6"
   },
   "devDependencies": {

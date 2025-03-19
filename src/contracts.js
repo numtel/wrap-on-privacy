@@ -1,5 +1,4 @@
 import {sepolia} from 'wagmi/chains';
-sepolia.rpcUrls.default.http[0] = 'https://rpc.ankr.com/eth_sepolia';
 
 export const defaultPool = {
   name: 'Sepolia Test Pool',
