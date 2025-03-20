@@ -443,11 +443,11 @@ function combineBigIntToHex(bigints, maxBits) {
     if (!Array.isArray(bigints) || !bigints.every(b => typeof b === 'bigint')) {
         throw new TypeError('Input must be an array of BigInt values.');
     }
-
     if (typeof maxBits !== 'number' || maxBits <= 0 || !Number.isInteger(maxBits)) {
         throw new TypeError('maxBits must be a positive integer.');
     }
 
+    const totalBits = bigints.length * maxBits;
     const maxValue = (1n << BigInt(maxBits)) - 1n; // Maximum value that fits within maxBits
 
     // Ensure all BigInt values are within the allowable range
@@ -467,13 +467,15 @@ function combineBigIntToHex(bigints, maxBits) {
 
     // Convert the combined binary string to a hexadecimal string
     let combinedHex = BigInt('0b' + combinedBinary).toString(16);
-    if (combinedHex.length % 2 !== 0) {
-      combinedHex = combinedHex + '0';
-    }
+    // Calculate the exact hex length needed to represent totalBits bits
+    let hexLength = Math.ceil(totalBits / 4);
+    // Eth RPCs don't return odd-length hex strings
+    if(hexLength % 2 !== 0) hexLength++;
+    // Pad on the left to ensure the hex string encodes exactly totalBits bits
+    combinedHex = combinedHex.padStart(hexLength, '0');
 
     return combinedHex;
 }
-
 
 function splitHexToBigInt(hexString, bitLength) {
   // Remove the '0x' prefix if it exists
@@ -484,15 +486,20 @@ function splitHexToBigInt(hexString, bitLength) {
     hexString = '0' + hexString; // Prepend a leading zero if necessary
   }
 
-  // Convert the hex string to a binary string
-  const binaryString = BigInt('0x' + hexString).toString(2).padStart(hexString.length * 4, '0');
+  const totalHexBits = hexString.length * 4;
+  // Convert hex string to binary string, padding to the full bit length encoded by the hex string
+  const binaryString = BigInt('0x' + hexString).toString(2).padStart(totalHexBits, '0');
+
+  // Calculate the number of extra bits (from left padding) that were added
+  const extraBits = totalHexBits % bitLength;
+  // Remove these extra bits to get back the original combined binary string
+  const effectiveBinaryString = binaryString.slice(extraBits);
 
   const result = [];
-
-  // Iterate over the binary string and split it into chunks based on bitLength
-  for (let i = 0; i < binaryString.length; i += bitLength) {
-    const chunk = binaryString.slice(i, i + bitLength);
-    const num = BigInt('0b' + chunk); // Convert the binary chunk to a decimal number
+  // Split the effective binary string into chunks of the original bitLength
+  for (let i = 0; i < effectiveBinaryString.length; i += bitLength) {
+    const chunk = effectiveBinaryString.slice(i, i + bitLength);
+    const num = BigInt('0b' + chunk);
     result.push(num);
   }
 
