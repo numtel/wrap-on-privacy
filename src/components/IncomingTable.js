@@ -33,7 +33,7 @@ export default function LoadIncoming({ pool, sesh, refreshCounter, setRefreshSta
   const { data, isError, isLoading, isSuccess, refetch } = useReadContracts({contracts, watch: false });
   const [cleanDataUpdate, setCleanData] = useState([]);
   const { writeContract, isPending, isError: isWriteError, data: writeData, error: writeError } = useWriteContract();
-  const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: data });
+  const { isError: txError, isPending: txPending, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: writeData });
 
   useEffect(() => {
     async function doAsync() {
